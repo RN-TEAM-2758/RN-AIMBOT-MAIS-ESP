@@ -801,7 +801,7 @@ CreatePremiumToggle("ESP", "ESP Distância", false, function(state)
 
         local largura = #textoStr * 7
         objetos.fundo.Position = Vector2.new(pos.X - largura / 2 - 5, pos.Y - 23)
-        objetos.fundo.Size = Vector2.new(largura + 10, 18)
+        objetos.fundo.Size = Vector2.new(largura + 0, 0)
         objetos.fundo.Visible = true
     end
 
