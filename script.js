@@ -451,7 +451,7 @@ UserInputService.InputChanged:Connect(function(input)
             panelStartPos.X.Scale,
             math.clamp(panelStartPos.X.Offset + delta.X, 0, workspace.CurrentCamera.ViewportSize.X - MainPanel.AbsoluteSize.X),
             panelStartPos.Y.Scale,
-            math.clamp(panelStartPos.Y.Offset + delta.Y, -29, workspace.CurrentCamera.ViewportSize.Y - MainPanel.AbsoluteSize.Y) -- Corrected Y clamp
+            math.clamp(panelStartPos.Y.Offset + delta.Y, -290, workspace.CurrentCamera.ViewportSize.Y - MainPanel.AbsoluteSize.Y) -- Corrected Y clamp
         )
         MainPanel.Position = newPos
     end
