@@ -801,7 +801,7 @@ CreatePremiumToggle("ESP", "ESP Distância", false, function(state)
 
         local largura = #textoStr * 7
         objetos.fundo.Position = Vector2.new(pos.X - largura / 2 - 5, pos.Y - 23)
-        objetos.fundo.Size = Vector2.new(largura + 0, 0)
+        objetos.fundo.Size = Vector2.new(largura + 10, 18)
         objetos.fundo.Visible = true
     end
 
@@ -1858,14 +1858,78 @@ local AimFov = 70
 local AimSmoothing = 0.5 -- Changed default to 0.5 for a smoother start
 local AimPart = "Head"
 _G.Aimbot_Ativo = false -- Initialize global state to false
+local AimTeamCheck = false -- New default for team check
+local AimVisible = false -- New default for aim visible check
 
--- Aimbot Toggle
-local aimbotToggle = CreatePremiumToggle("AIMBOT", "Aimbot", false, function(state)
-    _G.Aimbot_Ativo = state
-end)
+-- Services
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+
+-- Theme (Assuming 'Theme' is defined elsewhere in your script)
+-- Example placeholder if not defined:
+local Theme = {
+    Text = Color3.fromRGB(255, 255, 255),
+    Accent = Color3.fromRGB(0, 150, 255),
+    Button = Color3.fromRGB(50, 50, 50),
+    TabInactive = Color3.fromRGB(70, 70, 70),
+}
+
+-- CreatePremiumToggle function (Assuming this function is defined elsewhere)
+-- Example placeholder if not defined:
+local function CreatePremiumToggle(name, labelText, defaultState, callback)
+    local toggleContainer = Instance.new("Frame")
+    toggleContainer.Name = name .. "ToggleContainer"
+    toggleContainer.Size = UDim2.new(1, -20, 0, 40)
+    toggleContainer.Position = UDim2.new(0, 10, 0, 10) -- Adjust position as needed
+    toggleContainer.BackgroundTransparency = 1
+    -- Parent will be set later
+
+    local toggleButton = Instance.new("TextButton")
+    toggleButton.Size = UDim2.new(1, 0, 1, 0)
+    toggleButton.Text = labelText .. ": " .. (defaultState and "ON" or "OFF")
+    toggleButton.TextSize = 14
+    toggleButton.BackgroundColor3 = Theme.Button
+    toggleButton.TextColor3 = Theme.Text
+    toggleButton.Font = Enum.Font.Gotham
+    toggleButton.Parent = toggleContainer
+    Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(0, 6)
+
+    local currentState = defaultState
+    toggleButton.MouseButton1Click:Connect(function()
+        currentState = not currentState
+        toggleButton.Text = labelText .. ": " .. (currentState and "ON" or "OFF")
+        callback(currentState)
+    end)
+    return toggleContainer
+end
+
 
 -- Reference to the Aimbot tab frame
 local tabFrame = Tabs["AIMBOT"].Frame
+
+---
+-- Aimbot Toggles
+---
+local aimbotToggle = CreatePremiumToggle("AIMBOT", "Aimbot", false, function(state)
+    _G.Aimbot_Ativo = state
+end)
+aimbotToggle.Position = UDim2.new(0, 10, 0, 10)
+aimbotToggle.Parent = tabFrame
+
+local teamCheckToggle = CreatePremiumToggle("TEAMCHECK", "Team Check", false, function(state)
+    AimTeamCheck = state
+end)
+teamCheckToggle.Position = UDim2.new(0, 10, 0, 60)
+teamCheckToggle.Parent = tabFrame
+
+local aimVisibleToggle = CreatePremiumToggle("AIMVISIBLE", "Aim Visible", false, function(state)
+    AimVisible = state
+end)
+aimVisibleToggle.Position = UDim2.new(0, 10, 0, 110)
+aimVisibleToggle.Parent = tabFrame
 
 ---
 -- FOV SLIDER
@@ -1873,9 +1937,9 @@ local tabFrame = Tabs["AIMBOT"].Frame
 local fovContainer = Instance.new("Frame")
 fovContainer.Name = "FovContainer"
 fovContainer.Size = UDim2.new(1, -20, 0, 50)
-fovContainer.Position = UDim2.new(0, 10, 0, 60) -- Relative to parent (tabFrame)
+fovContainer.Position = UDim2.new(0, 10, 0, 170)
 fovContainer.BackgroundTransparency = 1
-fovContainer.Parent = tabFrame -- Parented to the AIMBOT tab
+fovContainer.Parent = tabFrame
 
 local fovLabel = Instance.new("TextLabel")
 fovLabel.Size = UDim2.new(1, 0, 0, 20)
@@ -1914,7 +1978,7 @@ Instance.new("UICorner", fovSliderThumb).CornerRadius = UDim.new(1, 0)
 local smoothContainer = Instance.new("Frame")
 smoothContainer.Name = "SmoothContainer"
 smoothContainer.Size = UDim2.new(1, -20, 0, 50)
-smoothContainer.Position = UDim2.new(0, 10, 0, 120) -- Relative to parent (tabFrame)
+smoothContainer.Position = UDim2.new(0, 10, 0, 230) -- Adjusted Y position
 smoothContainer.BackgroundTransparency = 1
 smoothContainer.Parent = tabFrame -- Parented to the AIMBOT tab
 
@@ -1953,7 +2017,7 @@ Instance.new("UICorner", smoothSliderThumb).CornerRadius = UDim.new(1, 0)
 ---
 local partSelection = Instance.new("TextButton")
 partSelection.Size = UDim2.new(1, -20, 0, 40)
-partSelection.Position = UDim2.new(0, 10, 0, 180) -- Relative to parent (tabFrame)
+partSelection.Position = UDim2.new(0, 10, 0, 290) -- Adjusted Y position
 partSelection.Text = "Aim Part: " .. AimPart
 partSelection.TextSize = 14
 partSelection.BackgroundColor3 = Theme.Button
@@ -2025,13 +2089,13 @@ end
 
 -- Apply sliders
 -- Ensure the position parameters for the containers are correct relative to the tabFrame
-setupSlider(fovSliderTrack, fovSliderFill, fovSliderThumb, fovLabel, 10, 200, AimFov, function(val)
+setupSlider(fovSliderTrack, fovSliderFill, fovSliderThumb, fovLabel, 0, 360, AimFov, function(val)
     AimFov = math.floor(val)
     fovLabel.Text = "Aim FOV: " .. AimFov
 end)
 
 -- Smoothing is typically 0 to 1 for Lerp. Changed max to 1.
-setupSlider(smoothSliderTrack, smoothSliderFill, smoothSliderThumb, smoothLabel, 0, 1, AimSmoothing, function(val)
+setupSlider(smoothSliderTrack, smoothSliderFill, smoothSliderThumb, smoothLabel, 0, 2, AimSmoothing, function(val)
     AimSmoothing = val
     smoothLabel.Text = "Smoothing: " .. string.format("%.1f", AimSmoothing)
 end)
@@ -2040,6 +2104,16 @@ end)
 ---
 -- MAIN AIMBOT FUNCTIONALITY (adapted from your working script)
 ---
+local function IsVisible(targetPart)
+    local origin = Camera.CFrame.Position
+    local direction = (targetPart.Position - origin).Unit
+    local ray = Ray.new(origin, direction * 1000) -- Ray length doesn't matter too much if it hits the target
+
+    local hit, position = workspace:FindPartOnRay(ray, LocalPlayer.Character)
+    -- Check if the ray hit something and if that something is the target part or one of its descendants
+    return hit and (hit == targetPart or hit:IsDescendantOf(targetPart.Parent))
+end
+
 local function GetClosestPlayer()
     -- Only run if aimbot is active via the _G.Aimbot_Ativo global variable set by the toggle
     if not _G.Aimbot_Ativo then return nil end
@@ -2051,14 +2125,21 @@ local function GetClosestPlayer()
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild(AimPart) and player.Character:FindFirstChild("Humanoid") then
             local humanoid = player.Character.Humanoid
             if humanoid.Health > 0 then
-                -- Assuming 'jogoTemEquipes' is not used based on your working script.
-                -- If you need team checks, add it back here:
-                -- if jogoTemEquipes and player.Team == LocalPlayer.Team then continue end
+                -- Team Check: If AimTeamCheck is true, only target if teams are different
+                -- This assumes your game uses the Team property for players and not neutral teams
+                if AimTeamCheck and LocalPlayer.Team and player.Team and player.Team == LocalPlayer.Team then
+                    continue -- Skip if on the same team and team check is active
+                end
 
                 local part = player.Character[AimPart]
                 local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
 
                 if onScreen then
+                    -- Aim Visible Check: If AimVisible is true, only target if the part is visible
+                    if AimVisible and not IsVisible(part) then
+                        continue -- Skip if not visible and aim visible is active
+                    end
+
                     local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
                     if distance < shortestDistance then
                         shortestDistance = distance
