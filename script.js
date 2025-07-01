@@ -1919,7 +1919,7 @@ end)
 aimbotToggle.Position = UDim2.new(0, 10, 0, 10)
 aimbotToggle.Parent = tabFrame
 
-local teamCheckToggle = CreatePremiumToggle("TEAMCHECK", "Team Check", false, function(state)
+local teamCheckToggle = CreatePremiumToggle("TEAMCHECK", "aim inimigos", false, function(state)
     AimTeamCheck = state
 end)
 teamCheckToggle.Position = UDim2.new(0, 10, 0, 60)
