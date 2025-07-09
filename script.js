@@ -2095,7 +2095,7 @@ setupSlider(fovSliderTrack, fovSliderFill, fovSliderThumb, fovLabel, 0, 360, Aim
 end)
 
 -- Smoothing is typically 0 to 1 for Lerp. Changed max to 1.
-setupSlider(smoothSliderTrack, smoothSliderFill, smoothSliderThumb, smoothLabel, 0, 2, AimSmoothing, function(val)
+setupSlider(smoothSliderTrack, smoothSliderFill, smoothSliderThumb, smoothLabel, 0, 1, AimSmoothing, function(val)
     AimSmoothing = val
     smoothLabel.Text = "Smoothing: " .. string.format("%.1f", AimSmoothing)
 end)
