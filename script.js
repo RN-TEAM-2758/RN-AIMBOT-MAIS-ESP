@@ -4,11 +4,12 @@ wait(1)
 -- Services
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local Lighting = game:GetService("Lighting") -- Unused in this script, but kept from original
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local Camera = workspace.CurrentCamera -- Added for Aimbot functionality
+local Camera = workspace.CurrentCamera
+local HttpService = game:GetService("HttpService")
+local TextService = game:GetService("TextService")
 
 -- UI Setup
 local guiReady, PlayerGui = pcall(function()
@@ -20,500 +21,508 @@ if not guiReady or not PlayerGui then
     return
 end
 
+-- Destroy existing UI if it exists
+if PlayerGui:FindFirstChild("MODMENU_V3") then
+    PlayerGui:FindFirstChild("MODMENU_V3"):Destroy()
+end
+
 -- Main UI Container
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "RNMobileUI"
+ScreenGui.Name = "MODMENU_V3"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = PlayerGui
 
--- UI Theme
+-- UI Theme (NOVO VISUAL - DARK NEON)
 local Theme = {
-    Background = Color3.fromRGB(30, 30, 40),
-    Button = Color3.fromRGB(50, 50, 60),
-    ButtonHover = Color3.fromRGB(70, 70, 80),
-    Accent = Color3.fromRGB(0, 170, 255),
+    Background = Color3.fromRGB(15, 15, 25),
+    Secondary = Color3.fromRGB(25, 25, 35),
+    Button = Color3.fromRGB(35, 35, 45),
+    ButtonHover = Color3.fromRGB(45, 45, 55),
+    Accent = Color3.fromRGB(0, 200, 255),
+    Accent2 = Color3.fromRGB(255, 100, 0),
     Text = Color3.new(1, 1, 1),
-    TabActive = Color3.fromRGB(0, 120, 215),
-    TabInactive = Color3.fromRGB(60, 60, 80),
-    TabHover = Color3.fromRGB(80, 80, 100)
+    SubText = Color3.fromRGB(180, 180, 180),
+    TabActive = Color3.fromRGB(0, 150, 255),
+    TabInactive = Color3.fromRGB(40, 40, 60),
+    TabHover = Color3.fromRGB(60, 60, 80),
+    Success = Color3.fromRGB(0, 255, 100),
+    Warning = Color3.fromRGB(255, 200, 0),
+    Danger = Color3.fromRGB(255, 50, 50),
+    SliderTrack = Color3.fromRGB(50, 50, 70),
+    SliderFill = Color3.fromRGB(0, 150, 255)
 }
 
--- Floating Toggle Button (now draggable)
+-- Floating Toggle Button
 local FloatButton = Instance.new("TextButton")
 FloatButton.Name = "ToggleButton"
-FloatButton.Size = UDim2.new(0, 60, 0, 60)
-FloatButton.Position = UDim2.new(0, 20, 0.5, -30)
-FloatButton.Text = "☰"
-FloatButton.TextSize = 24
+FloatButton.Size = UDim2.new(0, 70, 0, 70)
+FloatButton.Position = UDim2.new(0, 20, 0.8, -35)
+FloatButton.Text = "≡"
+FloatButton.TextSize = 32
 FloatButton.BackgroundColor3 = Theme.Accent
 FloatButton.TextColor3 = Theme.Text
 FloatButton.Font = Enum.Font.GothamBold
 FloatButton.BorderSizePixel = 0
-FloatButton.ZIndex = 10
+FloatButton.ZIndex = 100
+FloatButton.AutoButtonColor = false
 FloatButton.Parent = ScreenGui
 
+-- Estilização do botão flutuante
 local buttonCorner = Instance.new("UICorner", FloatButton)
-buttonCorner.CornerRadius = UDim.new(1, 0)
+buttonCorner.CornerRadius = UDim.new(0.3, 0)
 
--- Main Panel (not draggable)
+local buttonShadow = Instance.new("ImageLabel", FloatButton)
+buttonShadow.Image = "rbxassetid://1316045217"
+buttonShadow.ImageColor3 = Color3.new(0, 0, 0)
+buttonShadow.ImageTransparency = 0.8
+buttonShadow.ScaleType = Enum.ScaleType.Slice
+buttonShadow.SliceCenter = Rect.new(10, 10, 118, 118)
+buttonShadow.Size = UDim2.new(1, 20, 1, 20)
+buttonShadow.Position = UDim2.new(-0.1, -10, -0.1, -10)
+buttonShadow.BackgroundTransparency = 1
+buttonShadow.ZIndex = 99
+
+-- Efeito de brilho
+local buttonGlow = Instance.new("Frame", FloatButton)
+buttonGlow.Size = UDim2.new(1, 0, 1, 0)
+buttonGlow.BackgroundColor3 = Theme.Accent
+buttonGlow.BackgroundTransparency = 0.8
+buttonGlow.ZIndex = -1
+Instance.new("UICorner", buttonGlow).CornerRadius = UDim.new(0.3, 0)
+
+-- Main Panel
 local MainPanel = Instance.new("Frame")
 MainPanel.Name = "MainPanel"
-MainPanel.Size = UDim2.new(0, 320, 0, 450)
-MainPanel.Position = UDim2.new(0, 90, 0.5, -225)
+MainPanel.Size = UDim2.new(0.9, 0, 0.8, 0)
+MainPanel.Position = UDim2.new(0.5, 0, 0.5, 0)
+MainPanel.AnchorPoint = Vector2.new(0.5, 0.5)
 MainPanel.BackgroundColor3 = Theme.Background
 MainPanel.Visible = false
 MainPanel.Parent = ScreenGui
 
+-- Bordas arredondadas
 local panelCorner = Instance.new("UICorner", MainPanel)
-panelCorner.CornerRadius = UDim.new(0, 12)
+panelCorner.CornerRadius = UDim.new(0.08, 0)
 
+-- Sombra do painel
 local panelShadow = Instance.new("ImageLabel", MainPanel)
-panelShadow.Name = "Shadow"
-panelShadow.Image = "rbxassetid://1316045217" -- Ensure this asset ID is valid or replace with a generic shadow/frame
+panelShadow.Image = "rbxassetid://1316045217"
 panelShadow.ImageColor3 = Color3.new(0, 0, 0)
-panelShadow.ImageTransparency = 0.8
+panelShadow.ImageTransparency = 0.7
 panelShadow.ScaleType = Enum.ScaleType.Slice
 panelShadow.SliceCenter = Rect.new(10, 10, 118, 118)
-panelShadow.Size = UDim2.new(1, 10, 1, 10)
-panelShadow.Position = UDim2.new(0, -5, 0, -5)
+panelShadow.Size = UDim2.new(1, 20, 1, 20)
+panelShadow.Position = UDim2.new(-0.04, -10, -0.04, -10)
 panelShadow.BackgroundTransparency = 1
 panelShadow.ZIndex = -1
 
--- Tab System
-local TabButtonsContainer = Instance.new("Frame")
-TabButtonsContainer.Name = "TabButtonsContainer"
-TabButtonsContainer.Size = UDim2.new(1, 0, 0, 60)
-TabButtonsContainer.Position = UDim2.new(0, 0, 0, 0)
-TabButtonsContainer.BackgroundTransparency = 1
-TabButtonsContainer.ClipsDescendants = true
-TabButtonsContainer.Parent = MainPanel
+-- Header do painel
+local header = Instance.new("Frame")
+header.Name = "Header"
+header.Size = UDim2.new(1, 0, 0, 50)
+header.BackgroundColor3 = Theme.Accent
+header.BorderSizePixel = 0
+header.Parent = MainPanel
 
-local TabScroller = Instance.new("ScrollingFrame")
-TabScroller.Name = "TabScroller"
-TabScroller.Size = UDim2.new(1, 0, 1, 0)
-TabScroller.BackgroundTransparency = 1
-TabScroller.ScrollBarThickness = 0
-TabScroller.ScrollingDirection = Enum.ScrollingDirection.X
-TabScroller.VerticalScrollBarPosition = Enum.VerticalScrollBarPosition.Left
-TabScroller.Parent = TabButtonsContainer
+local headerCorner = Instance.new("UICorner", header)
+headerCorner.CornerRadius = UDim.new(0.08, 0, 0, 0)
 
-local TabButtonsLayout = Instance.new("UIListLayout", TabScroller)
-TabButtonsLayout.FillDirection = Enum.FillDirection.Horizontal
-TabButtonsLayout.Padding = UDim.new(0, 10)
-TabButtonsLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+local title = Instance.new("TextLabel")
+title.Name = "Title"
+title.Size = UDim2.new(0.7, 0, 1, 0)
+title.Position = UDim2.new(0.15, 0, 0, 0)
+title.Text = "RN TEAM"
+title.TextSize = 22
+title.TextColor3 = Theme.Text
+title.Font = Enum.Font.GothamBold
+title.BackgroundTransparency = 1
+title.Parent = header
 
-local TabContainer = Instance.new("Frame")
-TabContainer.Name = "TabContainer"
-TabContainer.Size = UDim2.new(1, -20, 1, -80)
-TabContainer.Position = UDim2.new(0, 10, 0, 80)
-TabContainer.BackgroundTransparency = 1
-TabContainer.Parent = MainPanel
+local closeBtn = Instance.new("TextButton")
+closeBtn.Name = "CloseButton"
+closeBtn.Size = UDim2.new(0, 40, 0, 40)
+closeBtn.Position = UDim2.new(1, -45, 0.5, -20)
+closeBtn.Text = "✕"
+closeBtn.TextSize = 24
+closeBtn.TextColor3 = Theme.Text
+closeBtn.BackgroundColor3 = Theme.Danger
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.AutoButtonColor = false
+closeBtn.Parent = header
 
+local closeCorner = Instance.new("UICorner", closeBtn)
+closeCorner.CornerRadius = UDim.new(0.5, 0)
+
+-- Container de tabs
+local tabContainer = Instance.new("Frame")
+tabContainer.Name = "TabContainer"
+tabContainer.Size = UDim2.new(1, 0, 1, -50)
+tabContainer.Position = UDim2.new(0, 0, 0, 50)
+tabContainer.BackgroundTransparency = 1
+tabContainer.Parent = MainPanel
+
+-- Tab buttons (lado esquerdo)
+local tabButtons = Instance.new("Frame")
+tabButtons.Name = "TabButtons"
+tabButtons.Size = UDim2.new(0.2, 0, 1, 0)
+tabButtons.BackgroundTransparency = 1
+tabButtons.Parent = tabContainer
+
+local tabListLayout = Instance.new("UIListLayout", tabButtons)
+tabListLayout.Padding = UDim.new(0, 5)
+tabListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+-- Tab content (lado direito)
+local tabContent = Instance.new("Frame")
+tabContent.Name = "TabContent"
+tabContent.Size = UDim2.new(0.8, 0, 1, 0)
+tabContent.Position = UDim2.new(0.2, 0, 0, 0)
+tabContent.BackgroundTransparency = 1
+tabContent.Parent = tabContainer
+
+-- Scrollable content
+local contentScroller = Instance.new("ScrollingFrame")
+contentScroller.Name = "ContentScroller"
+contentScroller.Size = UDim2.new(1, -20, 1, -20)
+contentScroller.Position = UDim2.new(0, 10, 0, 10)
+contentScroller.BackgroundTransparency = 1
+contentScroller.ScrollBarThickness = 4
+contentScroller.ScrollBarImageColor3 = Theme.Accent
+contentScroller.Parent = tabContent
+
+local contentList = Instance.new("UIListLayout", contentScroller)
+contentList.Padding = UDim.new(0, 10)
+
+-- Sistema de tabs
 local Tabs = {}
 local CurrentTab = nil
 
--- Function to create a tab
-local function CreateTab(tabName)
-    local TabButton = Instance.new("TextButton")
-    TabButton.Name = tabName.."Tab"
-    TabButton.Size = UDim2.new(0, 140, 0.65, 0)
-    TabButton.Text = tabName
-    TabButton.TextSize = 18
-    TabButton.BackgroundColor3 = Theme.TabInactive
-    TabButton.TextColor3 = Theme.Text
-    TabButton.Font = Enum.Font.GothamBold
-    TabButton.AutoButtonColor = false
-    TabButton.Parent = TabScroller
+local function CreateTab(tabName, icon)
+    local tabButton = Instance.new("TextButton")
+    tabButton.Name = tabName.."Tab"
+    tabButton.Size = UDim2.new(0.9, 0, 0, 50)
+    tabButton.Text = icon.."\n"..tabName
+    tabButton.TextSize = 12
+    tabButton.TextColor3 = Theme.SubText
+    tabButton.Font = Enum.Font.Gotham
+    tabButton.AutoButtonColor = false
+    tabButton.BackgroundColor3 = Theme.TabInactive
+    tabButton.Parent = tabButtons
     
-    local tabCorner = Instance.new("UICorner", TabButton)
-    tabCorner.CornerRadius = UDim.new(0, 10)
+    local tabCorner = Instance.new("UICorner", tabButton)
+    tabCorner.CornerRadius = UDim.new(0.1, 0)
     
-    TabButton.MouseEnter:Connect(function()
-        if CurrentTab ~= tabName then
-            game:GetService("TweenService"):Create(
-                TabButton,
-                TweenInfo.new(0.2),
-                {BackgroundColor3 = Theme.TabHover}
-            ):Play()
-        end
-    end)
-    
-    TabButton.MouseLeave:Connect(function()
-        if CurrentTab ~= tabName then
-            game:GetService("TweenService"):Create(
-                TabButton,
-                TweenInfo.new(0.2),
-                {BackgroundColor3 = Theme.TabInactive}
-            ):Play()
-        end
-    end)
-    
-    local TabFrame = Instance.new("ScrollingFrame")
-    TabFrame.Name = tabName.."Frame"
-    TabFrame.Size = UDim2.new(1, 0, 1, 0)
-    TabFrame.BackgroundTransparency = 1
-    TabFrame.Visible = false
-    TabFrame.ScrollBarThickness = 8
-    TabFrame.ScrollingDirection = Enum.ScrollingDirection.Y
-    TabFrame.Parent = TabContainer
-    
-    local UIList = Instance.new("UIListLayout", TabFrame)
-    UIList.Padding = UDim.new(0, 10)
+    local tabContentFrame = Instance.new("Frame")
+    tabContentFrame.Name = tabName.."Content"
+    tabContentFrame.Size = UDim2.new(1, 0, 0, 0)
+    tabContentFrame.BackgroundTransparency = 1
+    tabContentFrame.Visible = false
+    tabContentFrame.Parent = contentScroller
     
     Tabs[tabName] = {
-        Button = TabButton,
-        Frame = TabFrame,
-        UIList = UIList
+        Button = tabButton,
+        Content = tabContentFrame
     }
     
-    TabButton.MouseButton1Click:Connect(function()
+    tabButton.MouseButton1Click:Connect(function()
         for name, tab in pairs(Tabs) do
-            tab.Frame.Visible = (name == tabName)
+            tab.Content.Visible = (name == tabName)
             tab.Button.BackgroundColor3 = (name == tabName) and Theme.TabActive or Theme.TabInactive
+            tab.Button.TextColor3 = (name == tabName) and Theme.Text or Theme.SubText
         end
         CurrentTab = tabName
+        
+        -- Update scroll size
+        task.wait()
+        if Tabs[tabName].Content:FindFirstChildOfClass("UIListLayout") then
+            local layout = Tabs[tabName].Content:FindFirstChildOfClass("UIListLayout")
+            contentScroller.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 20)
+        end
     end)
+    
+    local contentLayout = Instance.new("UIListLayout", tabContentFrame)
+    contentLayout.Padding = UDim.new(0, 8)
     
     if not CurrentTab then
         CurrentTab = tabName
-        TabButton.BackgroundColor3 = Theme.TabActive
-        TabFrame.Visible = true
+        tabButton.BackgroundColor3 = Theme.TabActive
+        tabButton.TextColor3 = Theme.Text
+        tabContentFrame.Visible = true
     end
     
-    TabButtonsLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        TabScroller.CanvasSize = UDim2.new(0, TabButtonsLayout.AbsoluteContentSize.X + 20, 0, 0)
-    end)
-    
-    return TabFrame
+    return tabContentFrame
 end
 
--- Function to create a button in a tab
-local function CreateButton(tabName, buttonText, callback)
-    if not Tabs[tabName] then
-        warn("Tab '"..tabName.."' doesn't exist!")
-        return
-    end
-    
-    local btn = Instance.new("TextButton")
-    btn.Name = buttonText.."Button"
-    btn.Size = UDim2.new(1, 0, 0, 45)
-    btn.Text = buttonText
-    btn.TextSize = 14
-    btn.BackgroundColor3 = Theme.Button
-    btn.TextColor3 = Theme.Text
-    btn.Font = Enum.Font.Gotham
-    btn.AutoButtonColor = true
-    btn.Parent = Tabs[tabName].Frame
-    
-    local btnCorner = Instance.new("UICorner", btn)
-    btnCorner.CornerRadius = UDim.new(0, 6)
-    
-    btn.MouseEnter:Connect(function()
-        if not btn:GetAttribute("Toggled") then
-            game:GetService("TweenService"):Create(
-                btn,
-                TweenInfo.new(0.2),
-                {BackgroundColor3 = Theme.ButtonHover}
-            ):Play()
-        end
-    end)
-    
-    btn.MouseLeave:Connect(function()
-        if not btn:GetAttribute("Toggled") then
-            game:GetService("TweenService"):Create(
-                btn,
-                TweenInfo.new(0.2),
-                {BackgroundColor3 = Theme.Button}
-            ):Play()
-        end
-    end)
-    
-    btn.MouseButton1Click:Connect(function()
-        game:GetService("TweenService"):Create(
-            btn,
-            TweenInfo.new(0.1),
-            {BackgroundColor3 = Theme.Accent}
-        ):Play()
-        
-        wait(0.1)
-        
-        if not btn:GetAttribute("Toggled") then
-            game:GetService("TweenService"):Create(
-                btn,
-                TweenInfo.new(0.1),
-                {BackgroundColor3 = Theme.ButtonHover}
-            ):Play()
-        end
-        
-        callback()
-    end)
-    
-    Tabs[tabName].UIList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        Tabs[tabName].Frame.CanvasSize = UDim2.new(0, 0, 0, Tabs[tabName].UIList.AbsoluteContentSize.Y + 10)
-    end)
-    
-    return btn
-end
-
--- Function to create a toggle button
-local function CreateToggle(tabName, buttonText, defaultState, callback)
-    local btn = CreateButton(tabName, buttonText, function()
-        local newState = not btn:GetAttribute("Toggled")
-        btn:SetAttribute("Toggled", newState)
-        
-        if newState then
-            game:GetService("TweenService"):Create(
-                btn,
-                TweenInfo.new(0.2),
-                {BackgroundColor3 = Theme.Accent}
-            ):Play()
-        else
-            game:GetService("TweenService"):Create(
-                btn,
-                TweenInfo.new(0.2),
-                {BackgroundColor3 = Theme.Button}
-            ):Play()
-        end
-        
-        callback(newState)
-    end)
-    
-    btn:SetAttribute("Toggled", defaultState)
-    
-    if defaultState then
-        btn.BackgroundColor3 = Theme.Accent
-    end
-    
-    return btn
-end
-
--- Function to create a premium toggle switch
-local function CreatePremiumToggle(tabName, buttonText, defaultState, callback)
-    if not Tabs[tabName] then return end
-    
+-- Funções auxiliares
+local function CreateToggle(parent, text, default, callback)
     local toggleFrame = Instance.new("Frame")
-    toggleFrame.Name = buttonText.."Toggle"
-    toggleFrame.Size = UDim2.new(1, 0, 0, 50)
+    toggleFrame.Size = UDim2.new(1, 0, 0, 35)
     toggleFrame.BackgroundTransparency = 1
-    toggleFrame.Parent = Tabs[tabName].Frame
+    toggleFrame.Parent = parent
     
     local label = Instance.new("TextLabel")
-    label.Name = "Label"
-    label.Size = UDim2.new(0.6, 0, 1, 0)
-    label.Position = UDim2.new(0, 50, 0, 0)
-    label.Text = "  "..buttonText
-    label.TextSize = 16
+    label.Size = UDim2.new(0.7, 0, 1, 0)
+    label.Position = UDim2.new(0, 0, 0, 0)
+    label.Text = "  "..text
+    label.TextSize = 14
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.BackgroundTransparency = 1
     label.TextColor3 = Theme.Text
-    label.Font = Enum.Font.GothamBold
+    label.Font = Enum.Font.Gotham
     label.Parent = toggleFrame
     
-    local toggleBase = Instance.new("Frame")
-    toggleBase.Name = "ToggleBase"
-    toggleBase.Size = UDim2.new(0.2, 0, 0, 30)
-    toggleBase.Position = UDim2.new(0.65, 0, 0.5, -15)
-    toggleBase.BackgroundColor3 = Theme.TabInactive
-    toggleBase.Parent = toggleFrame
+    local toggleButton = Instance.new("TextButton")
+    toggleButton.Size = UDim2.new(0, 60, 0, 30)
+    toggleButton.Position = UDim2.new(1, -60, 0.5, -15)
+    toggleButton.Text = default and "ON" or "OFF"
+    toggleButton.TextSize = 12
+    toggleButton.TextColor3 = Theme.Text
+    toggleButton.BackgroundColor3 = default and Theme.Success or Theme.Button
+    toggleButton.AutoButtonColor = false
+    toggleButton.Font = Enum.Font.GothamBold
+    toggleButton.Parent = toggleFrame
     
-    local corner = Instance.new("UICorner", toggleBase)
-    corner.CornerRadius = UDim.new(1, 0)
+    local toggleCorner = Instance.new("UICorner", toggleButton)
+    toggleCorner.CornerRadius = UDim.new(0.5, 0)
     
-    local toggleButton = Instance.new("Frame")
-    toggleButton.Name = "ToggleButton"
-    toggleButton.Size = UDim2.new(0, 24, 0, 24)
-    toggleButton.Position = defaultState and UDim2.new(1, -28, 0.5, -13) or UDim2.new(0, 2, 0.5, -13)
-    toggleButton.BackgroundColor3 = defaultState and Theme.Accent or Color3.fromRGB(150, 150, 150)
-    toggleButton.Parent = toggleBase
+    toggleButton.MouseButton1Click:Connect(function()
+        local newState = not (toggleButton.Text == "ON")
+        toggleButton.Text = newState and "ON" or "OFF"
+        toggleButton.BackgroundColor3 = newState and Theme.Success or Theme.Button
+        callback(newState)
+    end)
     
-    local buttonCorner = Instance.new("UICorner", toggleButton)
-    buttonCorner.CornerRadius = UDim.new(1, 0)
+    return {
+        SetState = function(state)
+            toggleButton.Text = state and "ON" or "OFF"
+            toggleButton.BackgroundColor3 = state and Theme.Success or Theme.Button
+        end,
+        GetState = function()
+            return toggleButton.Text == "ON"
+        end
+    }
+end
+
+local function CreateSlider(parent, text, min, max, default, callback, valueDisplay)
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Size = UDim2.new(1, 0, 0, 60)
+    sliderFrame.BackgroundTransparency = 1
+    sliderFrame.Parent = parent
     
-    local currentState = defaultState
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 0, 20)
+    label.Text = text
+    label.TextSize = 14
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Theme.Text
+    label.Font = Enum.Font.Gotham
+    label.Parent = sliderFrame
     
-    local function updateToggle(state)
-        currentState = state
-        local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad)
+    local valueText = Instance.new("TextLabel")
+    valueText.Size = UDim2.new(0, 60, 0, 20)
+    valueText.Position = UDim2.new(1, -60, 0, 0)
+    valueText.Text = tostring(default)
+    valueText.TextSize = 14
+    valueText.TextXAlignment = Enum.TextXAlignment.Right
+    valueText.BackgroundTransparency = 1
+    valueText.TextColor3 = Theme.SubText
+    valueText.Font = Enum.Font.Gotham
+    valueText.Parent = sliderFrame
+    
+    local track = Instance.new("Frame")
+    track.Size = UDim2.new(1, 0, 0, 8)
+    track.Position = UDim2.new(0, 0, 0, 30)
+    track.BackgroundColor3 = Theme.SliderTrack
+    track.BorderSizePixel = 0
+    track.Parent = sliderFrame
+    
+    local trackCorner = Instance.new("UICorner", track)
+    trackCorner.CornerRadius = UDim.new(0.5, 0)
+    
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+    fill.BackgroundColor3 = Theme.SliderFill
+    fill.BorderSizePixel = 0
+    fill.Parent = track
+    
+    local fillCorner = Instance.new("UICorner", fill)
+    fillCorner.CornerRadius = UDim.new(0.5, 0)
+    
+    local thumb = Instance.new("Frame")
+    thumb.Size = UDim2.new(0, 20, 0, 20)
+    thumb.Position = UDim2.new((default - min) / (max - min), -10, 0.5, -10)
+    thumb.BackgroundColor3 = Theme.Accent
+    thumb.BorderSizePixel = 0
+    thumb.ZIndex = 2
+    thumb.Parent = track
+    
+    local thumbCorner = Instance.new("UICorner", thumb)
+    thumbCorner.CornerRadius = UDim.new(0.5, 0)
+    
+    local dragging = false
+    
+    local function updateValue(input)
+        local x = (input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X
+        x = math.clamp(x, 0, 1)
+        local value = min + (max - min) * x
         
-        TweenService:Create(
-            toggleButton,
-            tweenInfo,
-            {
-                Position = state and UDim2.new(1, -28, 0.5, -13) or UDim2.new(0, 2, 0.5, -13),
-                BackgroundColor3 = state and Theme.Accent or Color3.fromRGB(150, 150, 150)
-            }
-        ):Play()
+        fill.Size = UDim2.new(x, 0, 1, 0)
+        thumb.Position = UDim2.new(x, -10, 0.5, -10)
         
-        TweenService:Create(
-            toggleBase,
-            tweenInfo,
-            {BackgroundColor3 = state and Color3.fromRGB(40, 80, 120) or Theme.TabInactive}
-        ):Play()
+        if valueDisplay then
+            valueText.Text = valueDisplay(value)
+        else
+            valueText.Text = string.format("%.1f", value)
+        end
         
-        callback(state)
+        callback(value)
     end
     
-    toggleFrame.InputBegan:Connect(function(input)
+    track.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-            updateToggle(not currentState)
+            dragging = true
+            updateValue(input)
+        end
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+            updateValue(input)
         end
     end)
     
     return {
-        SetState = function(newState)
-            if currentState ~= newState then
-                updateToggle(newState)
+        SetValue = function(value)
+            local x = (value - min) / (max - min)
+            x = math.clamp(x, 0, 1)
+            fill.Size = UDim2.new(x, 0, 1, 0)
+            thumb.Position = UDim2.new(x, -10, 0.5, -10)
+            if valueDisplay then
+                valueText.Text = valueDisplay(value)
+            else
+                valueText.Text = string.format("%.1f", value)
             end
-        end,
-        GetState = function()
-            return currentState
+            callback(value)
         end
     }
 end
 
--- Toggle UI visibility (from your GUI framework)
-local minimized = true -- Start minimized
+local function CreateButton(parent, text, callback)
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(1, 0, 0, 40)
+    button.Text = text
+    button.TextSize = 14
+    button.TextColor3 = Theme.Text
+    button.BackgroundColor3 = Theme.Button
+    button.AutoButtonColor = false
+    button.Font = Enum.Font.Gotham
+    button.Parent = parent
+    
+    local buttonCorner = Instance.new("UICorner", button)
+    buttonCorner.CornerRadius = UDim.new(0.1, 0)
+    
+    button.MouseEnter:Connect(function()
+        if button.BackgroundColor3 ~= Theme.Accent then
+            TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = Theme.ButtonHover}):Play()
+        end
+    end)
+    
+    button.MouseLeave:Connect(function()
+        if button.BackgroundColor3 ~= Theme.Accent then
+            TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = Theme.Button}):Play()
+        end
+    end)
+    
+    button.MouseButton1Click:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.1), {BackgroundColor3 = Theme.Accent}):Play()
+        wait(0.1)
+        TweenService:Create(button, TweenInfo.new(0.1), {BackgroundColor3 = Theme.Button}):Play()
+        callback()
+    end)
+    
+    return button
+end
+
+-- Toggle UI
+local minimized = true
 FloatButton.MouseButton1Click:Connect(function()
     minimized = not minimized
     MainPanel.Visible = not minimized
     
     if minimized then
-        FloatButton.Text = "☰"
-        game:GetService("TweenService"):Create(
-            FloatButton,
-            TweenInfo.new(0.3),
-            {Rotation = 0}
-        ):Play()
+        FloatButton.Text = "≡"
+        TweenService:Create(FloatButton, TweenInfo.new(0.3), {Rotation = 0}):Play()
     else
         FloatButton.Text = "✕"
-        game:GetService("TweenService"):Create(
-            FloatButton,
-            TweenInfo.new(0.3),
-            {Rotation = 180}
-        ):Play()
+        TweenService:Create(FloatButton, TweenInfo.new(0.3), {Rotation = 180}):Play()
     end
 end)
 
--- Floating button dragging (from your GUI framework)
-local floatDragging = false
-local floatDragStart = Vector2.new()
-local floatStartPos = UDim2.new()
-
-FloatButton.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        floatDragging = true
-        floatDragStart = input.Position
-        floatStartPos = FloatButton.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                floatDragging = false
-            end
-        end)
-    end
+closeBtn.MouseButton1Click:Connect(function()
+    minimized = true
+    MainPanel.Visible = false
+    FloatButton.Text = "≡"
+    TweenService:Create(FloatButton, TweenInfo.new(0.3), {Rotation = 0}):Play()
 end)
 
-UserInputService.InputChanged:Connect(function(input)
-    if floatDragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
-        local delta = input.Position - floatDragStart
-        local newPos = UDim2.new(
-            floatStartPos.X.Scale,
-            math.clamp(floatStartPos.X.Offset + delta.X, 0, workspace.CurrentCamera.ViewportSize.X - FloatButton.AbsoluteSize.X),
-            floatStartPos.Y.Scale,
-            math.clamp(floatStartPos.Y.Offset + delta.Y, -290, workspace.CurrentCamera.ViewportSize.Y - FloatButton.AbsoluteSize.Y) -- Corrected Y clamp
-        )
-        FloatButton.Position = newPos
-    end
-end)
+-- Criar tabs
+local espTab = CreateTab("ESP", "👁️")
+local chamsTab = CreateTab("CHAMS", "🎨")
+local aimbotTab = CreateTab("AIMBOT", "🎯")
+local playerTab = CreateTab("PLAYER", "👤")
+local utilsTab = CreateTab("UTILS", "⚙️")
+local espColorsTab = CreateTab("ESP COLORS", "🎨")
 
--- Main panel dragging (from your GUI framework - might not be intended to be draggable)
-local panelDragging = false
-local panelDragStart = Vector2.new()
-local panelStartPos = UDim2.new()
+-- ==================== SISTEMA DE TIME ====================
+-- Função para verificar se um jogador é inimigo
+local function IsEnemy(player)
+    if player == LocalPlayer then return false end
+    -- Se o jogo não tem times, considera todos como inimigos
+    if not LocalPlayer.Team or not player.Team then return true end
+    -- Retorna true se for de time diferente
+    return player.Team ~= LocalPlayer.Team
+end
 
-MainPanel.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
-        panelDragging = true
-        panelDragStart = input.Position
-        panelStartPos = MainPanel.Position
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                panelDragging = false
-            end
-        end)
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if panelDragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
-        local delta = input.Position - panelDragStart
-        local newPos = UDim2.new(
-            panelStartPos.X.Scale,
-            math.clamp(panelStartPos.X.Offset + delta.X, 0, workspace.CurrentCamera.ViewportSize.X - MainPanel.AbsoluteSize.X),
-            panelStartPos.Y.Scale,
-            math.clamp(panelStartPos.Y.Offset + delta.Y, -290, workspace.CurrentCamera.ViewportSize.Y - MainPanel.AbsoluteSize.Y) -- Corrected Y clamp
-        )
-        MainPanel.Position = newPos
-    end
-end)
-
-
--- Create tabs (from your GUI framework)
-CreateTab("Main")
-CreateTab("CHAMS")
-CreateTab("ESP")
-local espColorsTab = CreateTab("ESP Colors")
-local aimbotTabFrame = CreateTab("AIMBOT") -- Store the frame for the Aim
-
--- Variáveis globais para os ESPs
+-- ==================== VARIÁVEIS GLOBAIS ====================
 _G.ESP_Dist_Ativo = false
 _G.ESP_Linha_Ativo = false
 _G.ESP_Skeleton_Ativo = false
 _G.ESP_Vida_Ativo = false
+_G.ESP_Name_Ativo = false
+_G.Aimbot_Ativo = false
 
-local textos = {}  -- Para ESP de distância
-local linhas = {}  -- Para ESP de linha
-local skeletonLines = {}  -- Para ESP esqueleto
-local healthBars = {}  -- Para ESP de vida
+local textos = {}
+local linhas = {}
+local skeletonLines = {}
+local nameTags = {}
+local healthBars = {}
+local chamsHighlights = {}
 
--- Variáveis para armazenar as cores
-local espColor = Color3.fromRGB(255, 0, 0) -- Vermelho padrão
-local espTransparency = 1 -- Opacidade máxima padrão
+-- Variáveis para armazenar as cores (só para ESP de distância)
+local espDistColor = Color3.fromRGB(255, 0, 0) -- Vermelho padrão só para distância
+local espDistTransparency = 1 -- Opacidade máxima padrão
 
--- Detecta se o jogo tem times (verificado uma vez para otimização)
-local jogoTemEquipes = pcall(function() return LocalPlayer.Team ~= nil end) and LocalPlayer.Team ~= nil
-
--- Função para atualizar todas as cores do ESP
-local function updateESPColors()
-    -- Atualiza o ESP de distância
+-- Função para atualizar apenas as cores do ESP de distância
+local function updateESPDistColors()
     if _G.ESP_Dist_Ativo then
         for _, jogador in pairs(game:GetService("Players"):GetPlayers()) do
             if jogador ~= LocalPlayer and textos[jogador] then
-                textos[jogador].texto.Color = espColor
-            end
-        end
-    end
-    
-    -- Atualiza o ESP de linha
-    if _G.ESP_Linha_Ativo then
-        for _, linha in pairs(linhas) do
-            linha.Color = espColor
-            linha.Transparency = 1 - espTransparency
-        end
-    end
-    
-    -- Atualiza o ESP esqueleto
-    if _G.ESP_Skeleton_Ativo then
-        for _, linhasJogador in pairs(skeletonLines) do
-            for _, linha in ipairs(linhasJogador) do
-                linha.Color = espColor
-                linha.Transparency = 1 - espTransparency
+                textos[jogador].texto.Color = espDistColor
             end
         end
     end
 end
 
--- Configuração da aba de cores do ESP
+-- Configuração da aba de cores do ESP (apenas para distância)
 do
     -- Contêiner para as configurações de cor
     local colorContainer = Instance.new("Frame")
@@ -521,14 +530,14 @@ do
     colorContainer.Size = UDim2.new(1, -20, 0, 200)
     colorContainer.Position = UDim2.new(0, 10, 0, 10)
     colorContainer.BackgroundTransparency = 1
-    colorContainer.Parent = Tabs["ESP Colors"].Frame
+    colorContainer.Parent = espColorsTab
 
     -- Seletor de cor
     local colorPickerLabel = Instance.new("TextLabel")
     colorPickerLabel.Name = "ColorPickerLabel"
     colorPickerLabel.Size = UDim2.new(1, 0, 0, 20)
     colorPickerLabel.Position = UDim2.new(0, 0, 0, 0)
-    colorPickerLabel.Text = "Cor do ESP:"
+    colorPickerLabel.Text = "Cor do ESP (Distância):"
     colorPickerLabel.TextSize = 14
     colorPickerLabel.TextXAlignment = Enum.TextXAlignment.Left
     colorPickerLabel.BackgroundTransparency = 1
@@ -540,7 +549,7 @@ do
     colorPreview.Name = "ColorPreview"
     colorPreview.Size = UDim2.new(0, 50, 0, 30)
     colorPreview.Position = UDim2.new(1, -50, 0, 0)
-    colorPreview.BackgroundColor3 = espColor
+    colorPreview.BackgroundColor3 = espDistColor
     colorPreview.Parent = colorPickerLabel
 
     local colorCorner = Instance.new("UICorner", colorPreview)
@@ -628,13 +637,13 @@ do
         local closeCorner = Instance.new("UICorner", closeButton)
         closeCorner.CornerRadius = UDim.new(0, 6)
         
-        local currentHue, currentSat, currentVal = Color3.toHSV(espColor)
+        local currentHue, currentSat, currentVal = Color3.toHSV(espDistColor)
         
         local function updateColor()
-            espColor = Color3.fromHSV(currentHue, currentSat, currentVal)
-            colorPreview.BackgroundColor3 = espColor
+            espDistColor = Color3.fromHSV(currentHue, currentSat, currentVal)
+            colorPreview.BackgroundColor3 = espDistColor
             saturationPicker.BackgroundColor3 = Color3.fromHSV(currentHue, 1, 1)
-            updateESPColors()
+            updateESPDistColors()
         end
         
         huePicker.InputBegan:Connect(function(input)
@@ -687,7 +696,7 @@ do
 
     local sliderFill = Instance.new("Frame")
     sliderFill.Name = "SliderFill"
-    sliderFill.Size = UDim2.new(espTransparency, 0, 1, 0)
+    sliderFill.Size = UDim2.new(espDistTransparency, 0, 1, 0)
     sliderFill.Position = UDim2.new(0, 0, 0, 0)
     sliderFill.BackgroundColor3 = Theme.Accent
     sliderFill.Parent = sliderTrack
@@ -698,7 +707,7 @@ do
     local sliderThumb = Instance.new("Frame")
     sliderThumb.Name = "SliderThumb"
     sliderThumb.Size = UDim2.new(0, 20, 0, 20)
-    sliderThumb.Position = UDim2.new(espTransparency, -10, 0.5, -10)
+    sliderThumb.Position = UDim2.new(espDistTransparency, -10, 0.5, -10)
     sliderThumb.BackgroundColor3 = Theme.Text
     sliderThumb.Parent = sliderTrack
 
@@ -723,26 +732,21 @@ do
         if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local x = (input.Position.X - sliderTrack.AbsolutePosition.X) / sliderTrack.AbsoluteSize.X
             x = math.clamp(x, 0, 1)
-            espTransparency = x
+            espDistTransparency = x
             sliderFill.Size = UDim2.new(x, 0, 1, 0)
             sliderThumb.Position = UDim2.new(x, -10, 0.5, -10)
-            updateESPColors()
+            updateESPDistColors()
         end
     end)
     
-    -- Botão para aplicar as cores (pode ser útil se a atualização em tempo real for desativada)
-    local applyButton = CreateButton("ESP Colors", "Aplicar Cores", updateESPColors)
+    -- Botão para aplicar as cores
+    local applyButton = CreateButton(espColorsTab, "Aplicar Cores", updateESPDistColors)
     applyButton.Position = UDim2.new(0, 0, 0, 130)
 end
 
--- Main Tab
-CreateButton("Main", "Close UI", function()
-    ScreenGui:Destroy()
-end)
-
--- ESP Tab
+-- ==================== ESP FUNCTIONS COM VERIFICAÇÃO DE TIME ====================
 local espDistConnections = {}
-CreatePremiumToggle("ESP", "ESP Distância", false, function(state)
+local espDistToggle = CreateToggle(espTab, "Distance ESP", false, function(state)
     _G.ESP_Dist_Ativo = state
 
     local function criarTexto()
@@ -755,7 +759,7 @@ CreatePremiumToggle("ESP", "ESP Distância", false, function(state)
 
         local texto = Drawing.new("Text")
         texto.Size = 16
-        texto.Color = espColor
+        texto.Color = espDistColor
         texto.Center = true
         texto.Outline = true
         texto.Visible = false
@@ -770,14 +774,15 @@ CreatePremiumToggle("ESP", "ESP Distância", false, function(state)
             return
         end
 
-        local char = jogador.Character
-        if not char or not char:FindFirstChild("HumanoidRootPart") then
+        -- VERIFICA SE É INIMIGO
+        if not IsEnemy(jogador) then
             objetos.fundo.Visible = false
             objetos.texto.Visible = false
             return
         end
 
-        if jogoTemEquipes and jogador.Team == LocalPlayer.Team then
+        local char = jogador.Character
+        if not char or not char:FindFirstChild("HumanoidRootPart") then
             objetos.fundo.Visible = false
             objetos.texto.Visible = false
             return
@@ -795,9 +800,9 @@ CreatePremiumToggle("ESP", "ESP Distância", false, function(state)
         local textoStr = tostring(distancia) .. "m"
 
         objetos.texto.Text = textoStr
-        objetos.texto.Position = Vector2.new(pos.X, pos.Y - 25) -- Ajustado para não sobrepor
+        objetos.texto.Position = Vector2.new(pos.X, pos.Y - 25)
         objetos.texto.Visible = true
-        objetos.texto.Color = espColor
+        objetos.texto.Color = espDistColor
 
         local largura = #textoStr * 7
         objetos.fundo.Position = Vector2.new(pos.X - largura / 2 - 5, pos.Y - 23)
@@ -845,1299 +850,557 @@ CreatePremiumToggle("ESP", "ESP Distância", false, function(state)
     end
 end)
 
-local espToggle = CreatePremiumToggle("ESP", "esp line", false, function(state)
+local espLineToggle = CreateToggle(espTab, "Line ESP", false, function(state)
+    _G.ESP_Linha_Ativo = state
+    
+    local function criarLinha()
+        local linha = Drawing.new("Line")
+        linha.Thickness = 2
+        linha.Color = Color3.fromRGB(255, 255, 255) -- Branco fixo
+        linha.Visible = false
+        return linha
+    end
+
+    local function atualizarLinha(jogador, linha)
+        if not _G.ESP_Linha_Ativo then
+            linha.Visible = false
+            return
+        end
+
+        -- VERIFICA SE É INIMIGO
+        if not IsEnemy(jogador) then
+            linha.Visible = false
+            return
+        end
+
+        local char = jogador.Character
+        if not char or not char:FindFirstChild("HumanoidRootPart") then
+            linha.Visible = false
+            return
+        end
+
+        local pos3D = char.HumanoidRootPart.Position + Vector3.new(0, 1.5, 0)
+        local pos2D, onScreen = Camera:WorldToViewportPoint(pos3D)
+
+        if onScreen then
+            linha.From = Vector2.new(Camera.ViewportSize.X / 2, 0)
+            linha.To = Vector2.new(pos2D.X, pos2D.Y)
+            linha.Color = Color3.fromRGB(255, 255, 255) -- Sempre branco
+            linha.Visible = true
+        else
+            linha.Visible = false
+        end
+    end
+
     if state then
-        local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Camera = workspace.CurrentCamera
-local LocalPlayer = Players.LocalPlayer
+        for _, jogador in pairs(Players:GetPlayers()) do
+            if jogador ~= LocalPlayer then
+                linhas[jogador] = criarLinha()
+            end
+        end
 
-local linhas = {}
-_G.ESP_Ativo = true
+        Players.PlayerAdded:Connect(function(jogador)
+            if jogador ~= LocalPlayer then
+                linhas[jogador] = criarLinha()
+            end
+        end)
 
-local jogoTemEquipes = false
-pcall(function()
-    if LocalPlayer.Team ~= nil then
-        jogoTemEquipes = true
-    end
-end)
+        Players.PlayerRemoving:Connect(function(jogador)
+            if linhas[jogador] then
+                linhas[jogador]:Remove()
+                linhas[jogador] = nil
+            end
+        end)
 
-local function criarLinha()
-    local linha = Drawing.new("Line")
-    linha.Thickness = 2
-    linha.Color = Color3.fromRGB(255, 0, 0)
-    linha.Transparency = 1
-    linha.Visible = false
-    return linha
-end
-
-local function atualizarLinha(jogador, linha)
-    if not _G.ESP_Ativo then
-        linha.Visible = false
-        return
-    end
-
-    local char = jogador.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then
-        linha.Visible = false
-        return
-    end
-
-    if jogoTemEquipes and jogador.Team == LocalPlayer.Team then
-        linha.Visible = false
-        return
-    end
-
-    local pos3D = char.HumanoidRootPart.Position + Vector3.new(0, 1.5, 0)
-    local pos2D, onScreen = Camera:WorldToViewportPoint(pos3D)
-
-    if onScreen then
-        linha.From = Vector2.new(Camera.ViewportSize.X / 2, 0) -- centro no topo da tela (cima)
-        linha.To = Vector2.new(pos2D.X, pos2D.Y)
-        linha.Visible = true
+        RunService.RenderStepped:Connect(function()
+            for jogador, linha in pairs(linhas) do
+                atualizarLinha(jogador, linha)
+            end
+        end)
     else
-        linha.Visible = false
-    end
-end
-
-for _, jogador in pairs(Players:GetPlayers()) do
-    if jogador ~= LocalPlayer then
-        linhas[jogador] = criarLinha()
-    end
-end
-
-Players.PlayerAdded:Connect(function(jogador)
-    if jogador ~= LocalPlayer then
-        linhas[jogador] = criarLinha()
+        for _, linha in pairs(linhas) do
+            linha:Remove()
+        end
+        linhas = {}
     end
 end)
 
-Players.PlayerRemoving:Connect(function(jogador)
-    if linhas[jogador] then
-        linhas[jogador]:Remove()
-        linhas[jogador] = nil
-    end
-end)
-
-RunService.RenderStepped:Connect(function()
-    for jogador, linha in pairs(linhas) do
-        atualizarLinha(jogador, linha)
-    end
-end)
-    else
-        local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Camera = workspace.CurrentCamera
-local LocalPlayer = Players.LocalPlayer
-
-local linhas = {}
-_G.ESP_Ativo = false
-
-local jogoTemEquipes = false
-pcall(function()
-    if LocalPlayer.Team ~= nil then
-        jogoTemEquipes = true
-    end
-end)
-
-local function criarLinha()
-    local linha = Drawing.new("Line")
-    linha.Thickness = 2
-    linha.Color = Color3.fromRGB(255, 0, 0)
-    linha.Transparency = 1
-    linha.Visible = false
-    return linha
-end
-
-local function atualizarLinha(jogador, linha)
-    if not _G.ESP_Ativo then
-        linha.Visible = false
-        return
+local espSkeletonToggle = CreateToggle(espTab, "Skeleton ESP", false, function(state)
+    _G.ESP_Skeleton_Ativo = state
+    
+    local function criarLinha()
+        local l = Drawing.new("Line")
+        l.Color = Color3.fromRGB(255, 255, 255) -- Branco fixo
+        l.Thickness = 1.5
+        l.Visible = false
+        return l
     end
 
-    local char = jogador.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then
-        linha.Visible = false
-        return
+    local function adicionarJogador(p)
+        if p ~= LocalPlayer then
+            skeletonLines[p] = {}
+            for i = 1, 5 do
+                table.insert(skeletonLines[p], criarLinha())
+            end
+        end
     end
 
-    if jogoTemEquipes and jogador.Team == LocalPlayer.Team then
-        linha.Visible = false
-        return
+    local function getPos(character, partName)
+        local part = character:FindFirstChild(partName)
+        if part then
+            local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
+            if onScreen then
+                return pos
+            end
+        end
+        return nil
     end
 
-    local pos3D = char.HumanoidRootPart.Position + Vector3.new(0, 1.5, 0)
-    local pos2D, onScreen = Camera:WorldToViewportPoint(pos3D)
-
-    if onScreen then
-        linha.From = Vector2.new(Camera.ViewportSize.X / 2, 0) -- centro no topo da tela (cima)
-        linha.To = Vector2.new(pos2D.X, pos2D.Y)
-        linha.Visible = true
-    else
-        linha.Visible = false
-    end
-end
-
-for _, jogador in pairs(Players:GetPlayers()) do
-    if jogador ~= LocalPlayer then
-        linhas[jogador] = criarLinha()
-    end
-end
-
-Players.PlayerAdded:Connect(function(jogador)
-    if jogador ~= LocalPlayer then
-        linhas[jogador] = criarLinha()
-    end
-end)
-
-Players.PlayerRemoving:Connect(function(jogador)
-    if linhas[jogador] then
-        linhas[jogador]:Remove()
-        linhas[jogador] = nil
-    end
-end)
-
-RunService.RenderStepped:Connect(function()
-    for jogador, linha in pairs(linhas) do
-        atualizarLinha(jogador, linha)
-    end
-end)
-    end
-end)
-
-local espToggle = CreatePremiumToggle("ESP", "esp esqueleto", false, function(state)
     if state then
-        local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local camera = workspace.CurrentCamera
-local localPlayer = Players.LocalPlayer
+        for _, p in pairs(Players:GetPlayers()) do
+            adicionarJogador(p)
+        end
 
-_G.ESP_Skeleton_Ativo = true -- ✅ Altere para false para desligar manualmente
+        Players.PlayerAdded:Connect(adicionarJogador)
 
--- Detecta se o jogo usa equipes
-local jogoTemEquipes = false
-pcall(function()
-	if localPlayer.Team ~= nil then
-		jogoTemEquipes = true
-	end
-end)
+        Players.PlayerRemoving:Connect(function(p)
+            if skeletonLines[p] then
+                for _, l in ipairs(skeletonLines[p]) do
+                    l:Remove()
+                end
+                skeletonLines[p] = nil
+            end
+        end)
 
-local function criarLinha()
-	local l = Drawing.new("Line")
-	l.Color = Color3.fromRGB(255, 255, 255)
-	l.Thickness = 1.5
-	l.Visible = false
-	return l
-end
+        RunService.RenderStepped:Connect(function()
+            for p, linhasJogador in pairs(skeletonLines) do
+                local char = p.Character
+                if not char or not _G.ESP_Skeleton_Ativo then
+                    for _, l in ipairs(linhasJogador) do l.Visible = false end
+                    continue
+                end
 
--- Armazena as linhas de cada jogador
-local linhas = {}
+                -- VERIFICA SE É INIMIGO
+                if not IsEnemy(p) then
+                    for _, l in ipairs(linhasJogador) do l.Visible = false end
+                    continue
+                end
 
-local function adicionarJogador(p)
-	if p ~= localPlayer then
-		linhas[p] = {}
-		for i = 1, 5 do
-			table.insert(linhas[p], criarLinha())
-		end
-	end
-end
+                local head = getPos(char, "Head")
+                local torso = getPos(char, "UpperTorso") or getPos(char, "Torso")
+                local lHand = getPos(char, "LeftHand") or getPos(char, "Left Arm")
+                local rHand = getPos(char, "RightHand") or getPos(char, "Right Arm")
+                local lFoot = getPos(char, "LeftFoot") or getPos(char, "Left Leg")
+                local rFoot = getPos(char, "RightFoot") or getPos(char, "Right Leg")
 
-for _, p in pairs(Players:GetPlayers()) do
-	adicionarJogador(p)
-end
+                if head and torso and lHand and rHand and lFoot and rFoot then
+                    -- Sempre branco, sem mudança de cor
+                    for _, linha in ipairs(linhasJogador) do
+                        linha.Color = Color3.fromRGB(255, 255, 255)
+                    end
+                    
+                    linhasJogador[1].From = Vector2.new(head.X, head.Y)
+                    linhasJogador[1].To = Vector2.new(torso.X, torso.Y)
+                    linhasJogador[1].Visible = true
 
-Players.PlayerAdded:Connect(adicionarJogador)
+                    linhasJogador[2].From = Vector2.new(torso.X, torso.Y)
+                    linhasJogador[2].To = Vector2.new(lHand.X, lHand.Y)
+                    linhasJogador[2].Visible = true
 
-Players.PlayerRemoving:Connect(function(p)
-	if linhas[p] then
-		for _, l in ipairs(linhas[p]) do
-			l:Remove()
-		end
-		linhas[p] = nil
-	end
-end)
+                    linhasJogador[3].From = Vector2.new(torso.X, torso.Y)
+                    linhasJogador[3].To = Vector2.new(rHand.X, rHand.Y)
+                    linhasJogador[3].Visible = true
 
-local function getPos(character, partName)
-	local part = character:FindFirstChild(partName)
-	if part then
-		local pos, onScreen = camera:WorldToViewportPoint(part.Position)
-		if onScreen then
-			return pos
-		end
-	end
-	return nil
-end
+                    linhasJogador[4].From = Vector2.new(torso.X, torso.Y)
+                    linhasJogador[4].To = Vector2.new(lFoot.X, lFoot.Y)
+                    linhasJogador[4].Visible = true
 
-RunService.RenderStepped:Connect(function()
-	for p, linhasJogador in pairs(linhas) do
-		local char = p.Character
-		if not char or not _G.ESP_Skeleton_Ativo then
-			for _, l in ipairs(linhasJogador) do l.Visible = false end
-			continue
-		end
-
-		if jogoTemEquipes and p.Team == localPlayer.Team then
-			for _, l in ipairs(linhasJogador) do l.Visible = false end
-			continue
-		end
-
-		local head = getPos(char, "Head")
-		local torso = getPos(char, "UpperTorso") or getPos(char, "Torso")
-		local lHand = getPos(char, "LeftHand") or getPos(char, "Left Arm")
-		local rHand = getPos(char, "RightHand") or getPos(char, "Right Arm")
-		local lFoot = getPos(char, "LeftFoot") or getPos(char, "Left Leg")
-		local rFoot = getPos(char, "RightFoot") or getPos(char, "Right Leg")
-
-		if head and torso and lHand and rHand and lFoot and rFoot then
-			linhasJogador[1].From = Vector2.new(head.X, head.Y)
-			linhasJogador[1].To = Vector2.new(torso.X, torso.Y)
-			linhasJogador[1].Visible = true
-
-			linhasJogador[2].From = Vector2.new(torso.X, torso.Y)
-			linhasJogador[2].To = Vector2.new(lHand.X, lHand.Y)
-			linhasJogador[2].Visible = true
-
-			linhasJogador[3].From = Vector2.new(torso.X, torso.Y)
-			linhasJogador[3].To = Vector2.new(rHand.X, rHand.Y)
-			linhasJogador[3].Visible = true
-
-			linhasJogador[4].From = Vector2.new(torso.X, torso.Y)
-			linhasJogador[4].To = Vector2.new(lFoot.X, lFoot.Y)
-			linhasJogador[4].Visible = true
-
-			linhasJogador[5].From = Vector2.new(torso.X, torso.Y)
-			linhasJogador[5].To = Vector2.new(rFoot.X, rFoot.Y)
-			linhasJogador[5].Visible = true
-		else
-			for _, l in ipairs(linhasJogador) do l.Visible = false end
-		end
-	end
-end)
+                    linhasJogador[5].From = Vector2.new(torso.X, torso.Y)
+                    linhasJogador[5].To = Vector2.new(rFoot.X, rFoot.Y)
+                    linhasJogador[5].Visible = true
+                else
+                    for _, l in ipairs(linhasJogador) do l.Visible = false end
+                end
+            end
+        end)
     else
-        local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local camera = workspace.CurrentCamera
-local localPlayer = Players.LocalPlayer
-
-_G.ESP_Skeleton_Ativo = false
-
--- Detecta se o jogo usa equipes
-local jogoTemEquipes = false
-pcall(function()
-	if localPlayer.Team ~= nil then
-		jogoTemEquipes = true
-	end
-end)
-
-local function criarLinha()
-	local l = Drawing.new("Line")
-	l.Color = Color3.fromRGB(255, 255, 255)
-	l.Thickness = 1.5
-	l.Visible = false
-	return l
-end
-
--- Armazena as linhas de cada jogador
-local linhas = {}
-
-local function adicionarJogador(p)
-	if p ~= localPlayer then
-		linhas[p] = {}
-		for i = 1, 5 do
-			table.insert(linhas[p], criarLinha())
-		end
-	end
-end
-
-for _, p in pairs(Players:GetPlayers()) do
-	adicionarJogador(p)
-end
-
-Players.PlayerAdded:Connect(adicionarJogador)
-
-Players.PlayerRemoving:Connect(function(p)
-	if linhas[p] then
-		for _, l in ipairs(linhas[p]) do
-			l:Remove()
-		end
-		linhas[p] = nil
-	end
-end)
-
-local function getPos(character, partName)
-	local part = character:FindFirstChild(partName)
-	if part then
-		local pos, onScreen = camera:WorldToViewportPoint(part.Position)
-		if onScreen then
-			return pos
-		end
-	end
-	return nil
-end
-
-RunService.RenderStepped:Connect(function()
-	for p, linhasJogador in pairs(linhas) do
-		local char = p.Character
-		if not char or not _G.ESP_Skeleton_Ativo then
-			for _, l in ipairs(linhasJogador) do l.Visible = false end
-			continue
-		end
-
-		if jogoTemEquipes and p.Team == localPlayer.Team then
-			for _, l in ipairs(linhasJogador) do l.Visible = false end
-			continue
-		end
-
-		local head = getPos(char, "Head")
-		local torso = getPos(char, "UpperTorso") or getPos(char, "Torso")
-		local lHand = getPos(char, "LeftHand") or getPos(char, "Left Arm")
-		local rHand = getPos(char, "RightHand") or getPos(char, "Right Arm")
-		local lFoot = getPos(char, "LeftFoot") or getPos(char, "Left Leg")
-		local rFoot = getPos(char, "RightFoot") or getPos(char, "Right Leg")
-
-		if head and torso and lHand and rHand and lFoot and rFoot then
-			linhasJogador[1].From = Vector2.new(head.X, head.Y)
-			linhasJogador[1].To = Vector2.new(torso.X, torso.Y)
-			linhasJogador[1].Visible = true
-
-			linhasJogador[2].From = Vector2.new(torso.X, torso.Y)
-			linhasJogador[2].To = Vector2.new(lHand.X, lHand.Y)
-			linhasJogador[2].Visible = true
-
-			linhasJogador[3].From = Vector2.new(torso.X, torso.Y)
-			linhasJogador[3].To = Vector2.new(rHand.X, rHand.Y)
-			linhasJogador[3].Visible = true
-
-			linhasJogador[4].From = Vector2.new(torso.X, torso.Y)
-			linhasJogador[4].To = Vector2.new(lFoot.X, lFoot.Y)
-			linhasJogador[4].Visible = true
-
-			linhasJogador[5].From = Vector2.new(torso.X, torso.Y)
-			linhasJogador[5].To = Vector2.new(rFoot.X, rFoot.Y)
-			linhasJogador[5].Visible = true
-		else
-			for _, l in ipairs(linhasJogador) do l.Visible = false end
-		end
-	end
-end)
+        for _, linhasJogador in pairs(skeletonLines) do
+            for _, l in ipairs(linhasJogador) do
+                l:Remove()
+            end
+        end
+        skeletonLines = {}
     end
 end)
 
-local espToggle = CreatePremiumToggle("ESP", "esp vida 1", false, function(state)
+local espVidaToggle = CreateToggle(espTab, "Health ESP", false, function(state)
+    _G.ESP_Vida_Ativo = state
+    
+    local function getLifeColor(pct)
+        if pct > 0.5 then
+            return Color3.fromRGB(0, 255, 0) -- Verde
+        elseif pct > 0.2 then
+            return Color3.fromRGB(255, 165, 0) -- Laranja
+        else
+            return Color3.fromRGB(255, 0, 0) -- Vermelho
+        end
+    end
+
+    local function criarBarraDeVida(jogador)
+        local function setup()
+            if not _G.ESP_Vida_Ativo then return end
+
+            local char = jogador.Character
+            if not char then return end
+
+            local head = char:FindFirstChild("Head")
+            local humanoid = char:FindFirstChildOfClass("Humanoid")
+            if not head or not humanoid then return end
+
+            -- VERIFICA SE É INIMIGO
+            if not IsEnemy(jogador) then
+                return -- Ignora aliados
+            end
+
+            -- Evita duplicatas
+            if head:FindFirstChild("VidaESP") then return end
+
+            local billboard = Instance.new("BillboardGui")
+            billboard.Name = "VidaESP"
+            billboard.Size = UDim2.new(0, 40, 0, 6)
+            billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+            billboard.AlwaysOnTop = true
+            billboard.Parent = head
+
+            local barra = Instance.new("Frame")
+            barra.BackgroundColor3 = getLifeColor(humanoid.Health / humanoid.MaxHealth)
+            barra.Size = UDim2.new(humanoid.Health / humanoid.MaxHealth, 0, 1, 0)
+            barra.BorderSizePixel = 0
+            barra.Position = UDim2.new(0, 0, 0, 0)
+            barra.Parent = billboard
+
+            healthBars[jogador] = {billboard = billboard, barra = barra, humanoid = humanoid}
+
+            -- Atualiza a barra ao mudar a vida
+            humanoid.HealthChanged:Connect(function()
+                if not _G.ESP_Vida_Ativo then
+                    billboard.Enabled = false
+                    return
+                end
+
+                local pct = humanoid.Health / humanoid.MaxHealth
+                barra.Size = UDim2.new(math.clamp(pct, 0, 1), 0, 1, 0)
+                barra.BackgroundColor3 = getLifeColor(pct)
+                billboard.Enabled = true
+            end)
+        end
+
+        -- Inicializa e reaplica ao renascer
+        if jogador.Character then
+            setup()
+        end
+
+        jogador.CharacterAdded:Connect(function()
+            wait(1)
+            setup()
+        end)
+    end
+
+    local function removerBarraDeVida(jogador)
+        if healthBars[jogador] then
+            if healthBars[jogador].billboard and healthBars[jogador].billboard.Parent then
+                healthBars[jogador].billboard:Destroy()
+            end
+            healthBars[jogador] = nil
+        end
+    end
+
     if state then
-        local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+        -- Aplicar a todos os jogadores
+        for _, jogador in pairs(Players:GetPlayers()) do
+            if jogador ~= LocalPlayer then
+                criarBarraDeVida(jogador)
+            end
+        end
 
-_G.ESP_Vida_Ativo = true -- ✅ Altere para false para desligar a qualquer momento
+        -- Novos jogadores
+        Players.PlayerAdded:Connect(function(jogador)
+            if jogador ~= LocalPlayer then
+                criarBarraDeVida(jogador)
+            end
+        end)
 
--- Função para cor da vida
-local function getLifeColor(pct)
-	if pct > 0.5 then
-		return Color3.fromRGB(0, 255, 0) -- Verde
-	elseif pct > 0.2 then
-		return Color3.fromRGB(255, 165, 0) -- Laranja
-	else
-		return Color3.fromRGB(255, 0, 0) -- Vermelho
-	end
-end
-
--- Detecta se o jogo usa times
-local jogoTemEquipes = false
-pcall(function()
-	if LocalPlayer.Team ~= nil then
-		jogoTemEquipes = true
-	end
-end)
-
--- Criar ESP de vida
-local function criarBarraDeVida(jogador)
-	local function setup()
-		if not _G.ESP_Vida_Ativo then return end
-
-		local char = jogador.Character
-		if not char then return end
-
-		local head = char:FindFirstChild("Head")
-		local humanoid = char:FindFirstChildOfClass("Humanoid")
-		if not head or not humanoid then return end
-
-		if jogoTemEquipes and jogador.Team == LocalPlayer.Team then
-			return -- Ignora aliados se for jogo de equipe
-		end
-
-		-- Evita duplicatas
-		if head:FindFirstChild("VidaESP") then return end
-
-		local billboard = Instance.new("BillboardGui")
-		billboard.Name = "VidaESP"
-		billboard.Size = UDim2.new(0, 40, 0, 6)
-		billboard.StudsOffset = Vector3.new(0, 2.5, 0)
-		billboard.AlwaysOnTop = true
-		billboard.Parent = head
-
-		local barra = Instance.new("Frame")
-		barra.BackgroundColor3 = getLifeColor(humanoid.Health / humanoid.MaxHealth)
-		barra.Size = UDim2.new(humanoid.Health / humanoid.MaxHealth, 0, 1, 0)
-		barra.BorderSizePixel = 0
-		barra.Position = UDim2.new(0, 0, 0, 0)
-		barra.Parent = billboard
-
-		-- Atualiza a barra ao mudar a vida
-		humanoid.HealthChanged:Connect(function()
-			if not _G.ESP_Vida_Ativo then
-				billboard.Enabled = false
-				return
-			end
-
-			local pct = humanoid.Health / humanoid.MaxHealth
-			barra.Size = UDim2.new(math.clamp(pct, 0, 1), 0, 1, 0)
-			barra.BackgroundColor3 = getLifeColor(pct)
-			billboard.Enabled = true
-		end)
-	end
-
-	-- Inicializa e reaplica ao renascer
-	if jogador.Character then
-		setup()
-	end
-
-	jogador.CharacterAdded:Connect(function()
-		wait(1)
-		setup()
-	end)
-end
-
--- Aplicar a todos os jogadores
-for _, jogador in pairs(Players:GetPlayers()) do
-	if jogador ~= LocalPlayer then
-		criarBarraDeVida(jogador)
-	end
-end
-
--- Novos jogadores
-Players.PlayerAdded:Connect(function(jogador)
-	if jogador ~= LocalPlayer then
-		criarBarraDeVida(jogador)
-	end
-end)
+        Players.PlayerRemoving:Connect(function(jogador)
+            removerBarraDeVida(jogador)
+        end)
     else
-        local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-
-_G.ESP_Vida_Ativo = false -- ✅ Altere para false para desligar a qualquer momento
-
--- Função para cor da vida
-local function getLifeColor(pct)
-	if pct > 0.5 then
-		return Color3.fromRGB(0, 255, 0) -- Verde
-	elseif pct > 0.2 then
-		return Color3.fromRGB(255, 165, 0) -- Laranja
-	else
-		return Color3.fromRGB(255, 0, 0) -- Vermelho
-	end
-end
-
--- Detecta se o jogo usa times
-local jogoTemEquipes = false
-pcall(function()
-	if LocalPlayer.Team ~= nil then
-		jogoTemEquipes = true
-	end
-end)
-
--- Criar ESP de vida
-local function criarBarraDeVida(jogador)
-	local function setup()
-		if not _G.ESP_Vida_Ativo then return end
-
-		local char = jogador.Character
-		if not char then return end
-
-		local head = char:FindFirstChild("Head")
-		local humanoid = char:FindFirstChildOfClass("Humanoid")
-		if not head or not humanoid then return end
-
-		if jogoTemEquipes and jogador.Team == LocalPlayer.Team then
-			return -- Ignora aliados se for jogo de equipe
-		end
-
-		-- Evita duplicatas
-		if head:FindFirstChild("VidaESP") then return end
-
-		local billboard = Instance.new("BillboardGui")
-		billboard.Name = "VidaESP"
-		billboard.Size = UDim2.new(0, 40, 0, 6)
-		billboard.StudsOffset = Vector3.new(0, 2.5, 0)
-		billboard.AlwaysOnTop = true
-		billboard.Parent = head
-
-		local barra = Instance.new("Frame")
-		barra.BackgroundColor3 = getLifeColor(humanoid.Health / humanoid.MaxHealth)
-		barra.Size = UDim2.new(humanoid.Health / humanoid.MaxHealth, 0, 1, 0)
-		barra.BorderSizePixel = 0
-		barra.Position = UDim2.new(0, 0, 0, 0)
-		barra.Parent = billboard
-
-		-- Atualiza a barra ao mudar a vida
-		humanoid.HealthChanged:Connect(function()
-			if not _G.ESP_Vida_Ativo then
-				billboard.Enabled = false
-				return
-			end
-
-			local pct = humanoid.Health / humanoid.MaxHealth
-			barra.Size = UDim2.new(math.clamp(pct, 0, 1), 0, 1, 0)
-			barra.BackgroundColor3 = getLifeColor(pct)
-			billboard.Enabled = true
-		end)
-	end
-
-	-- Inicializa e reaplica ao renascer
-	if jogador.Character then
-		setup()
-	end
-
-	jogador.CharacterAdded:Connect(function()
-		wait(1)
-		setup()
-	end)
-end
-
--- Aplicar a todos os jogadores
-for _, jogador in pairs(Players:GetPlayers()) do
-	if jogador ~= LocalPlayer then
-		criarBarraDeVida(jogador)
-	end
-end
-
--- Novos jogadores
-Players.PlayerAdded:Connect(function(jogador)
-	if jogador ~= LocalPlayer then
-		criarBarraDeVida(jogador)
-	end
-end)
+        -- Remover todas as barras de vida
+        for jogador, _ in pairs(healthBars) do
+            removerBarraDeVida(jogador)
+        end
+        healthBars = {}
     end
 end)
 
-CreateButton("CHAMS", "chams transparent", function()
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local localPlayer = Players.LocalPlayer
-
--- Adiciona highlight nos inimigos
-local function applyChams(player)
-    if player == localPlayer then return end
-    if not player.Character then return end
-    if player.Character:FindFirstChild("ChamsHighlight") then return end
-
-    local highlight = Instance.new("Highlight")
-    highlight.Name = "ChamsHighlight"
-    highlight.FillColor = Color3.fromRGB(0, 0, 0) -- Cor sólida (vermelho)
-    highlight.OutlineColor = Color3.fromRGB(0, 0, 0)
-    highlight.FillTransparency = 0.3
-    highlight.OutlineTransparency = 0
-    highlight.Adornee = player.Character
-    highlight.Parent = player.Character
-end
-
--- Remove o highlight se o jogador sair
-local function removeChams(player)
-    if player.Character and player.Character:FindFirstChild("ChamsHighlight") then
-        player.Character:FindFirstChild("ChamsHighlight"):Destroy()
+-- ESP NAME (NOVO) COM VERIFICAÇÃO DE TIME
+local espNameToggle = CreateToggle(espTab, "Name ESP", false, function(state)
+    _G.ESP_Name_Ativo = state
+    
+    local function criarNomeESP(jogador)
+        local texto = Drawing.new("Text")
+        texto.Text = jogador.Name
+        texto.Size = 18
+        texto.Color = Color3.fromRGB(255, 255, 255) -- Branco fixo
+        texto.Center = true
+        texto.Outline = true
+        texto.Visible = false
+        
+        local fundo = Drawing.new("Square")
+        fundo.Color = Color3.new(0, 0, 0)
+        fundo.Thickness = 0
+        fundo.Filled = true
+        fundo.Transparency = 0.5
+        fundo.Visible = false
+        
+        return {texto = texto, fundo = fundo}
     end
-end
 
--- Aplica Chams em jogadores existentes
-for _, player in ipairs(Players:GetPlayers()) do
-    player.CharacterAdded:Connect(function()
-        task.wait(1)
-        applyChams(player)
-    end)
-    if player.Character then
-        applyChams(player)
+    local function atualizarNomeESP(jogador, objetos)
+        if not _G.ESP_Name_Ativo then
+            objetos.texto.Visible = false
+            objetos.fundo.Visible = false
+            return
+        end
+
+        -- VERIFICA SE É INIMIGO
+        if not IsEnemy(jogador) then
+            objetos.texto.Visible = false
+            objetos.fundo.Visible = false
+            return
+        end
+
+        local char = jogador.Character
+        if not char or not char:FindFirstChild("HumanoidRootPart") then
+            objetos.texto.Visible = false
+            objetos.fundo.Visible = false
+            return
+        end
+
+        local hrp = char.HumanoidRootPart
+        local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position + Vector3.new(0, 3, 0))
+        if not onScreen then
+            objetos.texto.Visible = false
+            objetos.fundo.Visible = false
+            return
+        end
+
+        objetos.texto.Text = jogador.Name
+        objetos.texto.Position = Vector2.new(pos.X, pos.Y)
+        objetos.texto.Color = Color3.fromRGB(255, 255, 255) -- Sempre branco
+        objetos.texto.Visible = true
+        
+        local textWidth = #jogador.Name * 9
+        objetos.fundo.Position = Vector2.new(pos.X - textWidth / 2 - 3, pos.Y - 10)
+        objetos.fundo.Size = Vector2.new(textWidth + 0, 0)
+        objetos.fundo.Visible = true
     end
-end
 
--- Quando um novo jogador entrar
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function()
-        task.wait(1)
-        applyChams(player)
-    end)
+    if state then
+        for _, jogador in pairs(Players:GetPlayers()) do
+            if jogador ~= LocalPlayer then
+                nameTags[jogador] = criarNomeESP(jogador)
+            end
+        end
+
+        Players.PlayerAdded:Connect(function(jogador)
+            if jogador ~= LocalPlayer then
+                nameTags[jogador] = criarNomeESP(jogador)
+            end
+        end)
+
+        Players.PlayerRemoving:Connect(function(jogador)
+            if nameTags[jogador] then
+                nameTags[jogador].texto:Remove()
+                nameTags[jogador].fundo:Remove()
+                nameTags[jogador] = nil
+            end
+        end)
+
+        RunService.RenderStepped:Connect(function()
+            for jogador, objetos in pairs(nameTags) do
+                atualizarNomeESP(jogador, objetos)
+            end
+        end)
+    else
+        for _, objetos in pairs(nameTags) do
+            objetos.texto:Remove()
+            objetos.fundo:Remove()
+        end
+        nameTags = {}
+    end
 end)
 
--- Remove chams se jogador sair
-Players.PlayerRemoving:Connect(function(player)
-    removeChams(player)
-end)
+-- ==================== CHAMS FUNCTIONS COM VERIFICAÇÃO DE TIME ====================
+local function applyChams(color, transparency)
+    local function createHighlight(player)
+        if player == LocalPlayer then return end
+        -- VERIFICA SE É INIMIGO
+        if not IsEnemy(player) then return end
+        if not player.Character then return end
+        if chamsHighlights[player] then return end
 
--- Garante atualização dos chams
-RunService.RenderStepped:Connect(function()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= localPlayer and player.Character and not player.Character:FindFirstChild("ChamsHighlight") then
-            applyChams(player)
+        local highlight = Instance.new("Highlight")
+        highlight.Name = "ChamsHighlight"
+        highlight.FillColor = color
+        highlight.OutlineColor = Color3.new(0, 0, 0)
+        highlight.FillTransparency = transparency or 0.3
+        highlight.OutlineTransparency = 0
+        highlight.Adornee = player.Character
+        highlight.Parent = player.Character
+        
+        chamsHighlights[player] = highlight
+    end
+
+    local function removeHighlight(player)
+        if chamsHighlights[player] then
+            chamsHighlights[player]:Destroy()
+            chamsHighlights[player] = nil
         end
     end
-end)
-end)
 
-CreateButton("CHAMS", "red", function()
- local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local localPlayer = Players.LocalPlayer
-
--- Adiciona highlight nos inimigos
-local function applyChams(player)
-    if player == localPlayer then return end
-    if not player.Character then return end
-    if player.Character:FindFirstChild("ChamsHighlight") then return end
-
-    local highlight = Instance.new("Highlight")
-    highlight.Name = "ChamsHighlight"
-    highlight.FillColor = Color3.fromRGB(150, 0, 0) -- Cor sólida (vermelho)
-    highlight.OutlineColor = Color3.fromRGB(0, 0, 0)
-    highlight.FillTransparency = 0.3
-    highlight.OutlineTransparency = 0
-    highlight.Adornee = player.Character
-    highlight.Parent = player.Character
-end
-
--- Remove o highlight se o jogador sair
-local function removeChams(player)
-    if player.Character and player.Character:FindFirstChild("ChamsHighlight") then
-        player.Character:FindFirstChild("ChamsHighlight"):Destroy()
+    -- Remover todos os highlights existentes
+    for _, highlight in pairs(chamsHighlights) do
+        highlight:Destroy()
     end
-end
+    chamsHighlights = {}
 
--- Aplica Chams em jogadores existentes
-for _, player in ipairs(Players:GetPlayers()) do
-    player.CharacterAdded:Connect(function()
-        task.wait(1)
-        applyChams(player)
-    end)
-    if player.Character then
-        applyChams(player)
-    end
-end
-
--- Quando um novo jogador entrar
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function()
-        task.wait(1)
-        applyChams(player)
-    end)
-end)
-
--- Remove chams se jogador sair
-Players.PlayerRemoving:Connect(function(player)
-    removeChams(player)
-end)
-
--- Garante atualização dos chams
-RunService.RenderStepped:Connect(function()
+    -- Aplicar novos highlights apenas em inimigos
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= localPlayer and player.Character and not player.Character:FindFirstChild("ChamsHighlight") then
-            applyChams(player)
+        player.CharacterAdded:Connect(function()
+            task.wait(1)
+            createHighlight(player)
+        end)
+        if player.Character then
+            createHighlight(player)
         end
     end
-end)
-end)
 
-CreateButton("CHAMS", "yellow", function()
- local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local localPlayer = Players.LocalPlayer
-
--- Adiciona highlight nos inimigos
-local function applyChams(player)
-    if player == localPlayer then return end
-    if not player.Character then return end
-    if player.Character:FindFirstChild("ChamsHighlight") then return end
-
-    local highlight = Instance.new("Highlight")
-    highlight.Name = "ChamsHighlight"
-    highlight.FillColor = Color3.fromRGB(200, 200, 0) -- Cor sólida (vermelho)
-    highlight.OutlineColor = Color3.fromRGB(0, 0, 0)
-    highlight.FillTransparency = 0.3
-    highlight.OutlineTransparency = 0
-    highlight.Adornee = player.Character
-    highlight.Parent = player.Character
-end
-
--- Remove o highlight se o jogador sair
-local function removeChams(player)
-    if player.Character and player.Character:FindFirstChild("ChamsHighlight") then
-        player.Character:FindFirstChild("ChamsHighlight"):Destroy()
-    end
-end
-
--- Aplica Chams em jogadores existentes
-for _, player in ipairs(Players:GetPlayers()) do
-    player.CharacterAdded:Connect(function()
-        task.wait(1)
-        applyChams(player)
+    Players.PlayerAdded:Connect(function(player)
+        player.CharacterAdded:Connect(function()
+            task.wait(1)
+            createHighlight(player)
+        end)
     end)
-    if player.Character then
-        applyChams(player)
-    end
-end
 
--- Quando um novo jogador entrar
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function()
-        task.wait(1)
-        applyChams(player)
+    Players.PlayerRemoving:Connect(function(player)
+        removeHighlight(player)
     end)
-end)
-
--- Remove chams se jogador sair
-Players.PlayerRemoving:Connect(function(player)
-    removeChams(player)
-end)
-
--- Garante atualização dos chams
-RunService.RenderStepped:Connect(function()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= localPlayer and player.Character and not player.Character:FindFirstChild("ChamsHighlight") then
-            applyChams(player)
-        end
-    end
-end)
-end)
-
-CreateButton("CHAMS", "blue", function()
- local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local localPlayer = Players.LocalPlayer
-
--- Adiciona highlight nos inimigos
-local function applyChams(player)
-    if player == localPlayer then return end
-    if not player.Character then return end
-    if player.Character:FindFirstChild("ChamsHighlight") then return end
-
-    local highlight = Instance.new("Highlight")
-    highlight.Name = "ChamsHighlight"
-    highlight.FillColor = Color3.fromRGB(0, 0, 150) -- Cor sólida (vermelho)
-    highlight.OutlineColor = Color3.fromRGB(0, 0, 0)
-    highlight.FillTransparency = 0.3
-    highlight.OutlineTransparency = 0
-    highlight.Adornee = player.Character
-    highlight.Parent = player.Character
 end
 
--- Remove o highlight se o jogador sair
-local function removeChams(player)
-    if player.Character and player.Character:FindFirstChild("ChamsHighlight") then
-        player.Character:FindFirstChild("ChamsHighlight"):Destroy()
+CreateButton(chamsTab, "Transparent Chams", function()
+    applyChams(Color3.new(0, 0, 0), 0.7)
+end)
+
+CreateButton(chamsTab, "Red Chams", function()
+    applyChams(Color3.fromRGB(150, 0, 0))
+end)
+
+CreateButton(chamsTab, "Yellow Chams", function()
+    applyChams(Color3.fromRGB(200, 200, 0))
+end)
+
+CreateButton(chamsTab, "Blue Chams", function()
+    applyChams(Color3.fromRGB(0, 0, 150))
+end)
+
+CreateButton(chamsTab, "Green Chams", function()
+    applyChams(Color3.fromRGB(0, 150, 0))
+end)
+
+CreateButton(chamsTab, "White Chams", function()
+    applyChams(Color3.fromRGB(200, 200, 200))
+end)
+
+CreateButton(chamsTab, "Purple Chams", function()
+    applyChams(Color3.fromRGB(150, 0, 150))
+end)
+
+CreateButton(chamsTab, "Remove All Chams", function()
+    for _, highlight in pairs(chamsHighlights) do
+        highlight:Destroy()
     end
-end
-
--- Aplica Chams em jogadores existentes
-for _, player in ipairs(Players:GetPlayers()) do
-    player.CharacterAdded:Connect(function()
-        task.wait(1)
-        applyChams(player)
-    end)
-    if player.Character then
-        applyChams(player)
-    end
-end
-
--- Quando um novo jogador entrar
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function()
-        task.wait(1)
-        applyChams(player)
-    end)
+    chamsHighlights = {}
 end)
 
--- Remove chams se jogador sair
-Players.PlayerRemoving:Connect(function(player)
-    removeChams(player)
-end)
-
--- Garante atualização dos chams
-RunService.RenderStepped:Connect(function()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= localPlayer and player.Character and not player.Character:FindFirstChild("ChamsHighlight") then
-            applyChams(player)
-        end
-    end
-end)
-end)
-
-CreateButton("CHAMS", "Green", function()
- local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local localPlayer = Players.LocalPlayer
-
--- Adiciona highlight nos inimigos
-local function applyChams(player)
-    if player == localPlayer then return end
-    if not player.Character then return end
-    if player.Character:FindFirstChild("ChamsHighlight") then return end
-
-    local highlight = Instance.new("Highlight")
-    highlight.Name = "ChamsHighlight"
-    highlight.FillColor = Color3.fromRGB(0, 150, 0) -- Cor sólida (vermelho)
-    highlight.OutlineColor = Color3.fromRGB(0, 0, 0)
-    highlight.FillTransparency = 0.3
-    highlight.OutlineTransparency = 0
-    highlight.Adornee = player.Character
-    highlight.Parent = player.Character
-end
-
--- Remove o highlight se o jogador sair
-local function removeChams(player)
-    if player.Character and player.Character:FindFirstChild("ChamsHighlight") then
-        player.Character:FindFirstChild("ChamsHighlight"):Destroy()
-    end
-end
-
--- Aplica Chams em jogadores existentes
-for _, player in ipairs(Players:GetPlayers()) do
-    player.CharacterAdded:Connect(function()
-        task.wait(1)
-        applyChams(player)
-    end)
-    if player.Character then
-        applyChams(player)
-    end
-end
-
--- Quando um novo jogador entrar
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function()
-        task.wait(1)
-        applyChams(player)
-    end)
-end)
-
--- Remove chams se jogador sair
-Players.PlayerRemoving:Connect(function(player)
-    removeChams(player)
-end)
-
--- Garante atualização dos chams
-RunService.RenderStepped:Connect(function()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= localPlayer and player.Character and not player.Character:FindFirstChild("ChamsHighlight") then
-            applyChams(player)
-        end
-    end
-end)
-end)
-
-CreateButton("CHAMS", "White", function()
- local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local localPlayer = Players.LocalPlayer
-
--- Adiciona highlight nos inimigos
-local function applyChams(player)
-    if player == localPlayer then return end
-    if not player.Character then return end
-    if player.Character:FindFirstChild("ChamsHighlight") then return end
-
-    local highlight = Instance.new("Highlight")
-    highlight.Name = "ChamsHighlight"
-    highlight.FillColor = Color3.fromRGB(200, 200, 200) -- Cor sólida (vermelho)
-    highlight.OutlineColor = Color3.fromRGB(0, 0, 0)
-    highlight.FillTransparency = 0.3
-    highlight.OutlineTransparency = 0
-    highlight.Adornee = player.Character
-    highlight.Parent = player.Character
-end
-
--- Remove o highlight se o jogador sair
-local function removeChams(player)
-    if player.Character and player.Character:FindFirstChild("ChamsHighlight") then
-        player.Character:FindFirstChild("ChamsHighlight"):Destroy()
-    end
-end
-
--- Aplica Chams em jogadores existentes
-for _, player in ipairs(Players:GetPlayers()) do
-    player.CharacterAdded:Connect(function()
-        task.wait(1)
-        applyChams(player)
-    end)
-    if player.Character then
-        applyChams(player)
-    end
-end
-
--- Quando um novo jogador entrar
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function()
-        task.wait(1)
-        applyChams(player)
-    end)
-end)
-
--- Remove chams se jogador sair
-Players.PlayerRemoving:Connect(function(player)
-    removeChams(player)
-end)
-
--- Garante atualização dos chams
-RunService.RenderStepped:Connect(function()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= localPlayer and player.Character and not player.Character:FindFirstChild("ChamsHighlight") then
-            applyChams(player)
-        end
-    end
-end)
-end)
-
-CreateButton("CHAMS", "Purple", function()
- local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local localPlayer = Players.LocalPlayer
-
--- Adiciona highlight nos inimigos
-local function applyChams(player)
-    if player == localPlayer then return end
-    if not player.Character then return end
-    if player.Character:FindFirstChild("ChamsHighlight") then return end
-
-    local highlight = Instance.new("Highlight")
-    highlight.Name = "ChamsHighlight"
-    highlight.FillColor = Color3.fromRGB(150, 0, 150) -- Cor sólida (vermelho)
-    highlight.OutlineColor = Color3.fromRGB(0, 0, 0)
-    highlight.FillTransparency = 0.3
-    highlight.OutlineTransparency = 0
-    highlight.Adornee = player.Character
-    highlight.Parent = player.Character
-end
-
--- Remove o highlight se o jogador sair
-local function removeChams(player)
-    if player.Character and player.Character:FindFirstChild("ChamsHighlight") then
-        player.Character:FindFirstChild("ChamsHighlight"):Destroy()
-    end
-end
-
--- Aplica Chams em jogadores existentes
-for _, player in ipairs(Players:GetPlayers()) do
-    player.CharacterAdded:Connect(function()
-        task.wait(1)
-        applyChams(player)
-    end)
-    if player.Character then
-        applyChams(player)
-    end
-end
-
--- Quando um novo jogador entrar
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function()
-        task.wait(1)
-        applyChams(player)
-    end)
-end)
-
--- Remove chams se jogador sair
-Players.PlayerRemoving:Connect(function(player)
-    removeChams(player)
-end)
-
--- Garante atualização dos chams
-RunService.RenderStepped:Connect(function()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= localPlayer and player.Character and not player.Character:FindFirstChild("ChamsHighlight") then
-            applyChams(player)
-        end
-    end
-end)
-end)
-
--- Default variables for Aimbot
+-- ==================== AIMBOT COM VERIFICAÇÃO DE TIME ====================
 local AimFov = 70
-local AimSmoothing = 0.5 -- Changed default to 0.5 for a smoother start
+local AimSmoothing = 0.5
 local AimPart = "Head"
-_G.Aimbot_Ativo = false -- Initialize global state to false
-local AimTeamCheck = false -- New default for team check
-local AimVisible = false -- New default for aim visible check
+local AimTeamCheck = true -- Agora usa a função IsEnemy
+local AimVisible = false
 
--- Services
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local Camera = workspace.CurrentCamera
-
--- Theme (Assuming 'Theme' is defined elsewhere in your script)
--- Example placeholder if not defined:
-local Theme = {
-    Text = Color3.fromRGB(255, 255, 255),
-    Accent = Color3.fromRGB(0, 150, 255),
-    Button = Color3.fromRGB(50, 50, 50),
-    TabInactive = Color3.fromRGB(70, 70, 70),
-}
-
--- CreatePremiumToggle function (Assuming this function is defined elsewhere)
--- Example placeholder if not defined:
-local function CreatePremiumToggle(name, labelText, defaultState, callback)
-    local toggleContainer = Instance.new("Frame")
-    toggleContainer.Name = name .. "ToggleContainer"
-    toggleContainer.Size = UDim2.new(1, -20, 0, 40)
-    toggleContainer.Position = UDim2.new(0, 10, 0, 10) -- Adjust position as needed
-    toggleContainer.BackgroundTransparency = 1
-    -- Parent will be set later
-
-    local toggleButton = Instance.new("TextButton")
-    toggleButton.Size = UDim2.new(1, 0, 1, 0)
-    toggleButton.Text = labelText .. ": " .. (defaultState and "ON" or "OFF")
-    toggleButton.TextSize = 14
-    toggleButton.BackgroundColor3 = Theme.Button
-    toggleButton.TextColor3 = Theme.Text
-    toggleButton.Font = Enum.Font.Gotham
-    toggleButton.Parent = toggleContainer
-    Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(0, 6)
-
-    local currentState = defaultState
-    toggleButton.MouseButton1Click:Connect(function()
-        currentState = not currentState
-        toggleButton.Text = labelText .. ": " .. (currentState and "ON" or "OFF")
-        callback(currentState)
-    end)
-    return toggleContainer
-end
-
-
--- Reference to the Aimbot tab frame
-local tabFrame = Tabs["AIMBOT"].Frame
-
----
--- Aimbot Toggles
----
-local aimbotToggle = CreatePremiumToggle("AIMBOT", "Aimbot", false, function(state)
+-- Toggles do Aimbot (o toggle principal controla TUDO)
+local aimbotToggle = CreateToggle(aimbotTab, "Aimbot", false, function(state)
     _G.Aimbot_Ativo = state
 end)
-aimbotToggle.Position = UDim2.new(0, 10, 0, 10)
-aimbotToggle.Parent = tabFrame
 
-local teamCheckToggle = CreatePremiumToggle("TEAMCHECK", "aim inimigos", false, function(state)
+local aimTeamToggle = CreateToggle(aimbotTab, "Team Check", true, function(state)
     AimTeamCheck = state
 end)
-teamCheckToggle.Position = UDim2.new(0, 10, 0, 60)
-teamCheckToggle.Parent = tabFrame
 
-local aimVisibleToggle = CreatePremiumToggle("AIMVISIBLE", "Aim Visible", false, function(state)
+local aimVisibleToggle = CreateToggle(aimbotTab, "Visible Check", false, function(state)
     AimVisible = state
 end)
-aimVisibleToggle.Position = UDim2.new(0, 10, 0, 110)
-aimVisibleToggle.Parent = tabFrame
 
----
--- FOV SLIDER
----
-local fovContainer = Instance.new("Frame")
-fovContainer.Name = "FovContainer"
-fovContainer.Size = UDim2.new(1, -20, 0, 50)
-fovContainer.Position = UDim2.new(0, 10, 0, 170)
-fovContainer.BackgroundTransparency = 1
-fovContainer.Parent = tabFrame
-
-local fovLabel = Instance.new("TextLabel")
-fovLabel.Size = UDim2.new(1, 0, 0, 20)
-fovLabel.Text = "Aim FOV: " .. AimFov
-fovLabel.TextSize = 14
-fovLabel.TextXAlignment = Enum.TextXAlignment.Left
-fovLabel.BackgroundTransparency = 1
-fovLabel.TextColor3 = Theme.Text
-fovLabel.Font = Enum.Font.Gotham
-fovLabel.Parent = fovContainer
-
-local fovSliderTrack = Instance.new("Frame")
-fovSliderTrack.Size = UDim2.new(1, 0, 0, 10)
-fovSliderTrack.Position = UDim2.new(0, 0, 0, 25)
-fovSliderTrack.BackgroundColor3 = Theme.TabInactive
-fovSliderTrack.Parent = fovContainer
-
-Instance.new("UICorner", fovSliderTrack).CornerRadius = UDim.new(1, 0)
-
-local fovSliderFill = Instance.new("Frame")
-fovSliderFill.Size = UDim2.new(AimFov / 200, 0, 1, 0) -- Initial size based on AimFov
-fovSliderFill.BackgroundColor3 = Theme.Accent
-fovSliderFill.Parent = fovSliderTrack
-Instance.new("UICorner", fovSliderFill).CornerRadius = UDim.new(1, 0)
-
-local fovSliderThumb = Instance.new("Frame")
-fovSliderThumb.Size = UDim2.new(0, 20, 0, 20)
-fovSliderThumb.Position = UDim2.new(AimFov / 200, -10, 0.5, -10) -- Initial position based on AimFov
-fovSliderThumb.BackgroundColor3 = Theme.Text
-fovSliderThumb.Parent = fovSliderTrack
-Instance.new("UICorner", fovSliderThumb).CornerRadius = UDim.new(1, 0)
-
----
--- SMOOTHING SLIDER
----
-local smoothContainer = Instance.new("Frame")
-smoothContainer.Name = "SmoothContainer"
-smoothContainer.Size = UDim2.new(1, -20, 0, 50)
-smoothContainer.Position = UDim2.new(0, 10, 0, 230) -- Adjusted Y position
-smoothContainer.BackgroundTransparency = 1
-smoothContainer.Parent = tabFrame -- Parented to the AIMBOT tab
-
-local smoothLabel = Instance.new("TextLabel")
-smoothLabel.Size = UDim2.new(1, 0, 0, 20)
-smoothLabel.Text = "Smoothing: " .. string.format("%.1f", AimSmoothing)
-smoothLabel.TextSize = 14
-smoothLabel.TextXAlignment = Enum.TextXAlignment.Left
-smoothLabel.BackgroundTransparency = 1
-smoothLabel.TextColor3 = Theme.Text
-smoothLabel.Font = Enum.Font.Gotham
-smoothLabel.Parent = smoothContainer
-
-local smoothSliderTrack = Instance.new("Frame")
-smoothSliderTrack.Size = UDim2.new(1, 0, 0, 10)
-smoothSliderTrack.Position = UDim2.new(0, 0, 0, 25)
-smoothSliderTrack.BackgroundColor3 = Theme.TabInactive
-smoothSliderTrack.Parent = smoothContainer
-Instance.new("UICorner", smoothSliderTrack).CornerRadius = UDim.new(1, 0)
-
-local smoothSliderFill = Instance.new("Frame")
-smoothSliderFill.Size = UDim2.new(AimSmoothing, 0, 1, 0) -- Initial size based on AimSmoothing (range 0-1)
-smoothSliderFill.BackgroundColor3 = Theme.Accent
-smoothSliderFill.Parent = smoothSliderTrack
-Instance.new("UICorner", smoothSliderFill).CornerRadius = UDim.new(1, 0)
-
-local smoothSliderThumb = Instance.new("Frame")
-smoothSliderThumb.Size = UDim2.new(0, 20, 0, 20)
-smoothSliderThumb.Position = UDim2.new(AimSmoothing, -10, 0.5, -10) -- Initial position based on AimSmoothing (range 0-1)
-smoothSliderThumb.BackgroundColor3 = Theme.Text
-smoothSliderThumb.Parent = smoothSliderTrack
-Instance.new("UICorner", smoothSliderThumb).CornerRadius = UDim.new(1, 0)
-
----
--- AIM PART SELECTOR
----
-local partSelection = Instance.new("TextButton")
-partSelection.Size = UDim2.new(1, -20, 0, 40)
-partSelection.Position = UDim2.new(0, 10, 0, 290) -- Adjusted Y position
-partSelection.Text = "Aim Part: " .. AimPart
-partSelection.TextSize = 14
-partSelection.BackgroundColor3 = Theme.Button
-partSelection.TextColor3 = Theme.Text
-partSelection.Font = Enum.Font.Gotham
-partSelection.Parent = tabFrame -- Parented to the AIMBOT tab
-Instance.new("UICorner", partSelection).CornerRadius = UDim.new(0, 6)
-
-partSelection.MouseButton1Click:Connect(function()
-    AimPart = (AimPart == "Head" and "HumanoidRootPart") or "Head"
-    partSelection.Text = "Aim Part: " .. AimPart
-end)
-
----
--- SLIDER FUNCTIONALITY (Adapted to use global UserInputService and TweenService)
----
-local function setupSlider(track, fill, thumb, label, minVal, maxVal, initVal, callback)
-    local dragging = false
-
-    local function update(input)
-        -- Get position relative to the track frame
-        local x = (input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X
-        x = math.clamp(x, 0, 1)
-        local value = minVal + (maxVal - minVal) * x
-
-        -- Update fill and thumb based on 'x' directly for visual representation
-        fill.Size = UDim2.new(x, 0, 1, 0)
-        thumb.Position = UDim2.new(x, -10, 0.5, -10)
-
-        if label then
-            -- Determine if value should be integer or float for display
-            -- If the range is small (e.g., 0-1 for smoothing), format as float. Otherwise, as integer.
-            local displayText = ((maxVal - minVal) <= 10) and string.format("%.1f", value) or tostring(math.floor(value))
-            label.Text = label.Text:match("^(.-: )") .. displayText
-        end
-
-        callback(value)
-    end
-
-    -- Mouse and Touch input handling
-    track.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            update(input)
-        end
-    end)
-
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-        end
-    end)
-
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            update(input)
-        end
-    end)
+local combinedSlider = CreateSlider(aimbotTab, "FOV & Smoothing", 10, 360, 70, function(value)
+    AimFov = value
     
-    -- Set initial state of slider visual elements
-    local initialX = (initVal - minVal) / (maxVal - minVal)
-    fill.Size = UDim2.new(initialX, 0, 1, 0)
-    thumb.Position = UDim2.new(initialX, -10, 0.5, -10)
-    if label then
-        local initialDisplayText = ((maxVal - minVal) <= 10) and string.format("%.1f", initVal) or tostring(math.floor(initVal))
-        label.Text = label.Text:match("^(.-: )") .. initialDisplayText
-    end
-end
-
--- Apply sliders
--- Ensure the position parameters for the containers are correct relative to the tabFrame
-setupSlider(fovSliderTrack, fovSliderFill, fovSliderThumb, fovLabel, 0, 360, AimFov, function(val)
-    AimFov = math.floor(val)
-    fovLabel.Text = "Aim FOV: " .. AimFov
+    -- Usando função quadrática para suavidade
+    local x = value / 360  -- Normalizado de 0 a 1
+    local smoothingValue = 0.1 + (x * x * 1.9)  -- Cresce devagar no começo, rápido no final
+    
+    AimSmoothing = smoothingValue
+end, function(value)
+    local x = value / 360
+    local smoothingValue = 0.1 + (x * x * 1.9)
+    return string.format("FOV: %.0f° | Smooth: %.3f", value, smoothingValue)
 end)
 
--- Smoothing is typically 0 to 1 for Lerp. Changed max to 1.
-setupSlider(smoothSliderTrack, smoothSliderFill, smoothSliderThumb, smoothLabel, 0, 1, AimSmoothing, function(val)
-    AimSmoothing = val
-    smoothLabel.Text = "Smoothing: " .. string.format("%.1f", AimSmoothing)
+-- Aim Part Selector
+CreateButton(aimbotTab, "Aim Part: Head", function(btn)
+    AimPart = AimPart == "Head" and "HumanoidRootPart" or "Head"
+    btn.Text = "Aim Part: "..AimPart
 end)
 
-
----
--- MAIN AIMBOT FUNCTIONALITY (adapted from your working script)
----
+-- Main Aimbot Logic
 local function IsVisible(targetPart)
     local origin = Camera.CFrame.Position
     local direction = (targetPart.Position - origin).Unit
-    local ray = Ray.new(origin, direction * 1000) -- Ray length doesn't matter too much if it hits the target
+    local ray = Ray.new(origin, direction * 1000)
 
     local hit, position = workspace:FindPartOnRay(ray, LocalPlayer.Character)
-    -- Check if the ray hit something and if that something is the target part or one of its descendants
     return hit and (hit == targetPart or hit:IsDescendantOf(targetPart.Parent))
 end
 
 local function GetClosestPlayer()
-    -- Only run if aimbot is active via the _G.Aimbot_Ativo global variable set by the toggle
-    if not _G.Aimbot_Ativo then return nil end
-
     local mousePos = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-    local closestPlayer, shortestDistance = nil, AimFov -- Use AimFov for initial shortest distance
+    local closestPlayer, shortestDistance = nil, AimFov
 
     for _, player in ipairs(Players:GetPlayers()) do
+        -- VERIFICA SE É INIMIGO (usando a função principal)
+        if AimTeamCheck and not IsEnemy(player) then
+            continue
+        end
+        
         if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild(AimPart) and player.Character:FindFirstChild("Humanoid") then
             local humanoid = player.Character.Humanoid
             if humanoid.Health > 0 then
-                -- Team Check: If AimTeamCheck is true, only target if teams are different
-                -- This assumes your game uses the Team property for players and not neutral teams
-                if AimTeamCheck and LocalPlayer.Team and player.Team and player.Team == LocalPlayer.Team then
-                    continue -- Skip if on the same team and team check is active
-                end
-
                 local part = player.Character[AimPart]
                 local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
 
                 if onScreen then
-                    -- Aim Visible Check: If AimVisible is true, only target if the part is visible
                     if AimVisible and not IsVisible(part) then
-                        continue -- Skip if not visible and aim visible is active
+                        continue
                     end
 
                     local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
@@ -2152,25 +1415,243 @@ local function GetClosestPlayer()
     return closestPlayer
 end
 
-local function AimAtTarget(pos)
-    local cf = Camera.CFrame
-    local direction = (pos - cf.Position).Unit
-    local targetCF = CFrame.new(cf.Position, cf.Position + direction)
-    -- Apply smoothing based on the AimSmoothing variable
-    Camera.CFrame = cf:Lerp(targetCF, AimSmoothing)
-end
-
--- Update every frame using RenderStepped for smooth aiming
+-- Loop principal do aimbot (ativo apenas quando o toggle está ON)
 RunService.RenderStepped:Connect(function()
-    -- Only run if aimbot is active via the _G.Aimbot_Ativo global variable
     if not _G.Aimbot_Ativo then return end
 
     local target = GetClosestPlayer()
     if target and target.Character and target.Character:FindFirstChild(AimPart) then
-        AimAtTarget(target.Character[AimPart].Position)
+        -- Suavização do movimento da câmera
+        local currentCF = Camera.CFrame
+        local targetPos = target.Character[AimPart].Position
+        local direction = (targetPos - currentCF.Position).Unit
+        local targetCF = CFrame.new(currentCF.Position, currentCF.Position + direction)
+        
+        -- Aplica suavização
+        Camera.CFrame = currentCF:Lerp(targetCF, AimSmoothing)
     end
 end)
 
-MainPanel.Visible = false
-FloatButton.Text = "☰"
+-- Adiciona um aviso sobre como funciona
+CreateButton(aimbotTab, "INFO: Ative/Desative no Menu", function()
+    local notif = Instance.new("TextLabel")
+    notif.Text = "Aimbot: Ative/Desative no toggle acima"
+    notif.TextSize = 14
+    notif.TextColor3 = Theme.Accent
+    notif.BackgroundColor3 = Theme.Background
+    notif.Size = UDim2.new(0, 300, 0, 40)
+    notif.Position = UDim2.new(0.5, -150, 0.5, -20)
+    notif.AnchorPoint = Vector2.new(0.5, 0.5)
+    notif.Font = Enum.Font.GothamBold
+    notif.Parent = ScreenGui
+    
+    Instance.new("UICorner", notif).CornerRadius = UDim.new(0.1, 0)
+    
+    wait(2)
+    notif:Destroy()
+end)
 
+-- ==================== PLAYER MODIFICATIONS ====================
+local walkSpeed = 16
+local jumpPower = 50
+local noclipActive = false
+
+-- Walk Speed Slider
+local speedSlider = CreateSlider(playerTab, "Walk Speed", 16, 200, walkSpeed, function(value)
+    walkSpeed = value
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.WalkSpeed = value
+    end
+end, function(value)
+    return string.format("%.0f", value)
+end)
+
+-- Jump Power Slider
+local jumpSlider = CreateSlider(playerTab, "Jump Power", 50, 200, jumpPower, function(value)
+    jumpPower = value
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.JumpPower = value
+    end
+end, function(value)
+    return string.format("%.0f", value)
+end)
+
+-- Noclip Toggle
+local noclipToggle = CreateToggle(playerTab, "Noclip (N)", false, function(state)
+    noclipActive = state
+end)
+
+-- ==================== UTILS ====================
+CreateButton(utilsTab, "Copy Coordinates", function()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local pos = LocalPlayer.Character.HumanoidRootPart.Position
+        local text = string.format("Position: X=%.2f, Y=%.2f, Z=%.2f", pos.X, pos.Y, pos.Z)
+        
+        pcall(function()
+            setclipboard(text)
+        end)
+        
+        local notif = Instance.new("TextLabel")
+        notif.Text = "Coordinates Copied!"
+        notif.TextSize = 14
+        notif.TextColor3 = Theme.Success
+        notif.BackgroundColor3 = Theme.Background
+        notif.Size = UDim2.new(0, 200, 0, 40)
+        notif.Position = UDim2.new(0.5, -100, 0.2, 0)
+        notif.AnchorPoint = Vector2.new(0.5, 0)
+        notif.Font = Enum.Font.GothamBold
+        notif.Parent = ScreenGui
+    
+        Instance.new("UICorner", notif).CornerRadius = UDim.new(0.1, 0)
+        
+        wait(2)
+        notif:Destroy()
+    end
+end)
+
+CreateButton(utilsTab, "Server Hop", function()
+    -- Implementação de Server Hop
+end)
+
+CreateButton(utilsTab, "Anti-AFK", function()
+    local vu = game:GetService("VirtualUser")
+    game:GetService("Players").LocalPlayer.Idled:Connect(function()
+        vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        wait(1)
+        vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    end)
+end)
+
+-- ==================== NOVO SISTEMA DE DRAGGING ====================
+
+-- Botão flutuante dragging
+local floatDragging = false
+local floatDragStart = Vector2.new()
+local floatStartPos = UDim2.new()
+
+FloatButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        floatDragging = true
+        floatDragStart = input.Position
+        floatStartPos = FloatButton.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                floatDragging = false
+            end
+        end)
+    end
+end)
+
+-- Botão flutuante dragging
+UserInputService.InputChanged:Connect(function(input)
+    if floatDragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+        local delta = input.Position - floatDragStart
+        local newPos = UDim2.new(
+            floatStartPos.X.Scale,
+            math.clamp(floatStartPos.X.Offset + delta.X, 
+                       -20,  -- ← ESQUERDA: Permite sair 20px da tela
+                       workspace.CurrentCamera.ViewportSize.X - FloatButton.AbsoluteSize.X + 20),  -- ← DIREITA: Permite sair 20px
+            floatStartPos.Y.Scale,
+            math.clamp(floatStartPos.Y.Offset + delta.Y, 
+                       -450,  -- ← TOPO: Pode subir 200px
+                       workspace.CurrentCamera.ViewportSize.Y - FloatButton.AbsoluteSize.Y + 20)  -- ← BASE: Pode descer 20px a mais
+        )
+        FloatButton.Position = newPos
+    end
+end)
+
+-- Painel principal dragging (arrasta pelo header)
+local panelDragging = false
+local panelDragStart = Vector2.new()
+local panelStartPos = UDim2.new()
+
+header.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        panelDragging = true
+        panelDragStart = input.Position
+        panelStartPos = MainPanel.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                panelDragging = false
+            end
+        end)
+    end
+end)
+
+-- Painel principal dragging
+UserInputService.InputChanged:Connect(function(input)
+    if panelDragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+        local delta = input.Position - panelDragStart
+        local newPos = UDim2.new(
+            panelStartPos.X.Scale,
+            math.clamp(panelStartPos.X.Offset + delta.X, 
+                       -1300,  -- ← ESQUERDA: Não encosta, deixa 20px de margem
+                       workspace.CurrentCamera.ViewportSize.X - MainPanel.AbsoluteSize.X - -1300),  -- ← DIREITA: Não encosta
+            panelStartPos.Y.Scale,
+            math.clamp(panelStartPos.Y.Offset + delta.Y, 
+                       -100,  -- ← TOPO: Não encosta no topo, deixa 40px
+                       workspace.CurrentCamera.ViewportSize.Y - MainPanel.AbsoluteSize.Y - -400)  -- ← BASE: Não encosta na base
+        )
+        MainPanel.Position = newPos
+    end
+end)
+
+-- ==================== KEYBINDS ====================
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    -- Noclip toggle
+    if input.KeyCode == Enum.KeyCode.N then
+        noclipActive = not noclipActive
+        if noclipToggle then
+            noclipToggle.SetState(noclipActive)
+        end
+    end
+    
+    -- Hide UI
+    if input.KeyCode == Enum.KeyCode.H then
+        ScreenGui.Enabled = not ScreenGui.Enabled
+    end
+end)
+
+-- Noclip loop
+RunService.Stepped:Connect(function()
+    if noclipActive and LocalPlayer.Character then
+        for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide then
+                part.CanCollide = false
+            end
+        end
+    end
+end)
+
+-- Atualizar tamanho do content scroller
+RunService.RenderStepped:Connect(function()
+    if CurrentTab and Tabs[CurrentTab] and Tabs[CurrentTab].Content:FindFirstChildOfClass("UIListLayout") then
+        local layout = Tabs[CurrentTab].Content:FindFirstChildOfClass("UIListLayout")
+        contentScroller.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 20)
+    end
+end)
+
+-- Notificação inicial
+local function showNotification(text, color)
+    local notif = Instance.new("TextLabel")
+    notif.Text = text
+    notif.TextSize = 16
+    notif.TextColor3 = color or Theme.Text
+    notif.BackgroundColor3 = Theme.Background
+    notif.Size = UDim2.new(0, 300, 0, 50)
+    notif.Position = UDim2.new(0.5, -150, 0.1, 0)
+    notif.AnchorPoint = Vector2.new(0.5, 0)
+    notif.Font = Enum.Font.GothamBold
+    notif.Parent = ScreenGui
+    
+    Instance.new("UICorner", notif).CornerRadius = UDim.new(0.1, 0)
+    
+    wait(3)
+    notif:Destroy()
+end
+
+showNotification("YouTube RN TEAM!!", Theme.Success)
